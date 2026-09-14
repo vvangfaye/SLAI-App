@@ -1,0 +1,50 @@
+page { background: #f5f2eb; color: #303d35; font-family: -apple-system, BlinkMacSystemFont, sans-serif; font-size: 28rpx; }
+.page { padding: 32rpx 32rpx 64rpx; }
+.eyebrow { color: #8892a4; font-size: 20rpx; letter-spacing: 4rpx; margin-bottom: 14rpx; }
+.title { font-size: 48rpx; font-weight: 700; letter-spacing: -1rpx; }
+.subtitle { color: #7c8278; font-size: 24rpx; margin-top: 12rpx; line-height: 1.7; }
+.row { display: flex; align-items: center; justify-content: space-between; gap: 16rpx; }
+.section { font-size: 32rpx; font-weight: 600; margin: 36rpx 0 20rpx; }
+.card { background: white; border: 1rpx solid #e6e4da; border-radius: 24rpx; padding: 28rpx; margin-bottom: 20rpx; }
+.hero { background: #386552; color: white; border: 0; margin-top: 28rpx; padding: 36rpx; }
+.hero .subtitle { color: #dae6d6; }
+.badge { display: inline-block; background: #e8eee5; color: #4d6b57; border-radius: 10rpx; padding: 8rpx 14rpx; font-size: 21rpx; }
+.notice { background: #fff4dd; color: #967239; border-radius: 14rpx; padding: 18rpx 22rpx; font-size: 23rpx; line-height: 1.7; margin: 24rpx 0; }
+.muted { color: #7c8278; font-size: 24rpx; line-height: 1.7; }
+.number { font-size: 66rpx; font-weight: 600; margin: 24rpx 0; }
+.number .unit { font-size: 25rpx; font-weight: 400; margin: 0 12rpx; }
+.track { height: 10rpx; border-radius: 10rpx; background: #e8edf4; overflow: hidden; margin: 22rpx 0; }
+.fill { height: 100%; background: #dfb16d; border-radius: 10rpx; }
+.hero .track { background: #5c7c69; }
+.course { display: flex; gap: 24rpx; }
+.time { color: #4d6b57; min-width: 86rpx; font-weight: 600; font-size: 26rpx; }
+.course-body { border-left: 5rpx solid #c8d5be; padding-left: 22rpx; flex: 1; }
+.course-title { font-size: 29rpx; font-weight: 600; margin-bottom: 10rpx; }
+.empty { padding: 48rpx 20rpx; text-align: center; color: #7c8278; line-height: 1.9; }
+button { font-size: 26rpx; border-radius: 14rpx; background: #e8eee5; color: #386552; margin: 0; }
+button::after { border: none; }
+.primary { background: #386552; color: white; }
+.small { font-size: 23rpx; padding: 0 20rpx; line-height: 2.6; }
+.row > button.small { width: auto !important; min-width: 0 !important; margin: 0 !important; flex-shrink: 0; }
+.actions { display: flex; gap: 18rpx; margin-top: 24rpx; }
+.actions button { flex: 1; }
+.divider { height: 1rpx; background: #edf0f4; margin: 24rpx 0; }
+.good { color: #398776; }
+.warn { color: #ad7f39; }
+.field { margin-bottom: 24rpx; }
+.field input, .field textarea { box-sizing: border-box; background: #f5f2eb; color: #303d35; border: 1rpx solid #e5e9f0; border-radius: 12rpx; margin-top: 12rpx; width: 100%; }
+.field input { height: 88rpx; min-height: 88rpx; padding: 0 20rpx; font-size: 28rpx; line-height: normal; }
+.field textarea { height: 460rpx; padding: 20rpx; font-family: monospace; font-size: 23rpx; }
+
+/* 河套日常：暖纸色、松绿色与紧凑日记式布局。 */
+.title { font-size: 46rpx; font-weight: 600; letter-spacing: 2rpx; }
+.eyebrow { letter-spacing: 2rpx; color: #7c8278; }
+.hero { border-radius: 8rpx 36rpx 8rpx 36rpx; }
+.schedule-strip { display: flex; align-items: center; justify-content: space-between; padding: 26rpx 0; border-top: 1rpx solid #dcded2; border-bottom: 1rpx solid #dcded2; margin-top: 28rpx; color: #386552; }
+.compact-course { display: flex; justify-content: space-between; gap: 20rpx; padding: 20rpx 0; font-size: 25rpx; }
+.day-duration { font-size: 32rpx; margin-top: 12rpx; }
+.punch-list { border-top: 1rpx dashed #d7dccf; margin-top: 24rpx; padding-top: 20rpx; }
+.punch-row { display: flex; gap: 24rpx; padding: 16rpx 0; }
+.punch-time { color: #386552; font-variant-numeric: tabular-nums; min-width: 126rpx; }
+
+.day-toggle { display: block; width: 100%; padding: 0; margin: 0; text-align: left; background: transparent; color: inherit; line-height: 1.5; border-radius: 0; }

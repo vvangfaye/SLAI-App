@@ -1,0 +1,7 @@
+node_modules/
+.DS_Store
+project.private.config.json
+__pycache__/
+*.py[cod]
+.env
+.env.*

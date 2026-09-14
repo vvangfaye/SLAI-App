@@ -1,0 +1,2 @@
+.editor { margin-top: 28rpx; }
+.picker-value { padding: 18rpx; background: #f5f2eb; border-radius: 12rpx; }

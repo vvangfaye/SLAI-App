@@ -1,0 +1,24 @@
+<view class="page">
+  <view class="row"><view class="title">河套日常</view><view class="badge">第 {{week}} 周</view></view>
+  <view class="subtitle">{{date}}<text wx:if="{{holiday.badge}}"> · {{holiday.name}}{{holiday.type === 'work' ? '补班' : '放假'}}</text></view>
+  <view class="actions"><button class="primary" bindtap="sync" loading="{{syncing}}" disabled="{{syncing}}">{{syncing ? '正在同步…' : '同步'}}</button></view>
+  <view wx:if="{{syncStatus}}" class="notice">{{syncStatus}}</view>
+  <view class="subtitle">{{label}}<text wx:if="{{attendanceUpdated}}"> · 考勤 {{attendanceUpdated}}</text></view>
+  <view class="card hero" bindtap="openAttendance">
+    <view class="row"><view>今日在校时长</view><view class="badge">{{qualification}}</view></view>
+    <view wx:if="{{hasRecord}}" class="number">{{hours}}<text class="unit">小时</text>{{minutes}}<text class="unit">分</text></view>
+    <view wx:else class="number">—<text class="unit">暂无记录</text></view>
+    <view class="track"><view class="fill" style="width: {{progress}}%"></view></view>
+    <view class="row subtitle"><text>目标 {{target}} 小时</text><text>查看考勤 →</text></view>
+  </view>
+  <view class="quick-stats"><view bindtap="openAttendance"><view class="muted">本月有效 / 应到</view><view class="quick-value">{{monthStats.effectiveText}} / {{monthStats.requiredText}} <text>天</text></view></view><view bindtap="openLeave"><view class="muted">年假剩余 · 个人记录</view><view class="quick-value">{{!leaveBalance || leaveBalance.remaining === null ? '设置' : leaveBalance.remaining}} <text wx:if="{{leaveBalance && leaveBalance.remaining !== null}}">天</text></view></view></view>
+  <view wx:if="{{personalError}}" class="notice">{{personalError}}</view>
+  <view class="card today-punches">
+    <view class="row"><view class="course-title">今日打卡</view><button wx:if="{{needsLogin}}" class="small" bindtap="login">登录</button><button wx:else class="small" bindtap="refreshPunches" disabled="{{punchLoading || syncing}}">{{punchLoading ? '读取中' : '刷新'}}</button></view>
+    <view wx:if="{{punchStatus}}" class="muted punch-status">{{punchStatus}}</view>
+    <view wx:for="{{punches}}" wx:key="id" class="punch-row"><text class="punch-time">{{item.time}}</text><view><view>{{item.event}} <text class="muted">{{item.result}}</text></view><view wx:if="{{item.channel}}" class="muted">{{item.channel}}</view></view></view>
+  </view>
+  <view class="schedule-strip" bindtap="openSchedule"><view><view class="course-title">我的课表</view><view class="muted">{{courses.length ? '今日 ' + courses.length + ' 门课' : '今日无课'}}</view></view><text>查看 →</text></view>
+  <view wx:if="{{showCourses && nextCourse}}" class="compact-course" bindtap="openSchedule"><view><view>{{nextCourse.ongoing ? '进行中' : '下一节'}} · {{nextCourse.title}}</view><view class="muted">{{nextCourse.when}} {{nextCourse.start}} · {{nextCourse.room || '地点待定'}}</view></view></view>
+  <view class="row schedule-strip" bindtap="openAgenda"><view class="course-title">个人日程</view><text>查看 →</text></view><view wx:for="{{nextEvents}}" wx:key="id" class="compact-course" bindtap="openAgenda"><text>{{item.title}}</text><text class="muted">{{item.date}} {{item.time}}</text></view>
+</view>

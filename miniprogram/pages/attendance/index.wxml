@@ -1,0 +1,48 @@
+<view class="page attendance-page">
+  <view class="row"><view class="title">考勤</view><button class="sync-button" bindtap="syncMonth" disabled="{{busy}}" loading="{{busy}}">{{busy ? '同步中' : '同步本月'}}</button></view>
+  <view class="source-caption">{{label}}</view>
+  <view class="school-progress">
+    <view class="row"><text>学校月度统计</text><text wx:if="{{monthStats.hasStats}}" class="badge">{{monthStats.status}}</text></view>
+    <view class="progress-number">{{monthStats.effectiveText}} <text>/ {{monthStats.requiredText}} 天</text></view>
+    <view wx:if="{{monthStats.complete}}" class="track"><view class="fill" style="width: {{monthStats.percent}}%"></view></view>
+    <view class="muted">{{monthStats.complete ? '有效 / 应到 · 还差 ' + monthStats.remaining + ' 天' : '有效 / 应到 · 缺失项待学校返回'}}</view>
+  </view>
+  <view class="month-summary">
+    <view><view class="summary-value">{{qualified}}<text>天</text></view><view class="summary-label">已合格</view></view>
+    <view><view class="summary-value">{{totalHours}}<text>小时</text></view><view class="summary-label">累计在校</view></view>
+    <view><view class="summary-value">{{recorded}}<text>天</text></view><view class="summary-label">有记录</view></view>
+  </view>
+  <view class="calendar-panel">
+    <view class="calendar-heading">
+      <picker mode="date" fields="month" value="{{month}}" bindchange="changeMonth"><view class="month-title">{{yearTitle}}<text>{{monthTitle}}</text><text class="month-caret">⌄</text></view></picker>
+      <view class="calendar-controls"><button bindtap="prevMonth" aria-label="上个月">‹</button><button class="back-today" bindtap="today">今天</button><button bindtap="nextMonth" aria-label="下个月">›</button></view>
+    </view>
+    <view class="calendar-weekdays"><text wx:for="{{weekdays}}" wx:key="*this">{{item}}</text></view>
+    <view class="calendar-grid">
+      <button wx:for="{{cells}}" wx:key="date" class="calendar-cell {{!item.inMonth ? 'outside' : ''}} {{item.future ? 'future' : ''}} {{item.today ? 'is-today' : ''}} {{selectedDate === item.date ? 'selected' : ''}}" disabled="{{!item.inMonth}}" data-date="{{item.date}}" bindtap="selectDay" aria-label="{{item.date}} {{item.caption}} {{item.holiday.detail}} {{item.personalMark}}">
+        <text wx:if="{{item.inMonth && item.holiday.badge}}" class="holiday-mark {{item.holiday.type}}">{{item.holiday.badge}}</text><text wx:if="{{item.inMonth && (item.personalMark || item.schoolLeave)}}" class="personal-mark">{{item.personalMark || '假'}}</text><view class="calendar-day">{{item.day}}<text wx:if="{{item.today}}" class="today-mark"></text></view>
+        <view class="calendar-duration">{{item.inMonth ? item.caption : ''}}</view>
+        <view class="state-dot {{item.inMonth ? item.state : 'none'}}"></view>
+      </button>
+    </view>
+    <view class="calendar-legend"><view>休 放假 · 班 调休</view><view>假 请假 · 事 日程</view><view><text class="state-dot qualified"></text>合格</view><view><text class="state-dot unqualified"></text>未达标</view><view><text class="state-dot pending"></text>待判定</view><view>— 无汇总</view></view>
+  </view>
+  <view wx:if="{{anomalies.length}}" class="anomaly-panel"><button class="day-toggle" bindtap="showAnomalies">{{anomalies.length}} 天未达标待核对 {{anomaliesOpen ? '⌃' : '⌄'}}</button><view wx:if="{{anomaliesOpen}}"><button wx:for="{{anomalies}}" wx:key="date" class="day-toggle anomaly-row" data-date="{{item.date}}" bindtap="selectDay">{{item.date}} · {{item.duration}} →</button></view></view>
+  <view wx:if="{{status}}" class="notice">{{status}}</view>
+  <view class="day-panel">
+    <view class="row"><view class="selected-title">{{selectedTitle}}</view><view wx:if="{{selected}}" class="badge">{{selected.status}}</view></view>
+    <view class="selected-duration">{{selected ? selected.duration : selectedFuture ? '暂无记录' : '暂无当日汇总'}}</view>
+    <view wx:if="{{holiday.detail}}" class="day-context">{{holiday.detail}}</view>
+    <view wx:if="{{selected.leave}}" class="day-context">学校标记：请假</view>
+    <view wx:for="{{personalDay.leaves}}" wx:key="id" class="day-context" bindtap="openLeave">个人记录 · {{item.kindName}} · {{item.stateName}}</view>
+    <view wx:for="{{personalDay.events}}" wx:key="id" class="day-context" bindtap="openAgenda">{{item.time || '全天'}} · {{item.title}}</view>
+    <view wx:if="{{personalError}}" class="notice">{{personalError}}</view>
+    <view class="row punch-heading"><text>打卡记录</text><button wx:if="{{!selectedFuture}}" class="small" bindtap="refreshPunches" disabled="{{punchLoading}}">{{punchLoading ? '读取中…' : '刷新'}}</button></view>
+    <view wx:if="{{punchLoading}}" class="detail-note">读取中…</view>
+    <view wx:elif="{{expanded !== selectedDate}}" class="detail-note">{{selectedFuture ? '暂无记录' : '点击刷新查看'}}</view>
+    <view wx:elif="{{punchStatus}}" class="detail-note">{{punchStatus}}</view>
+    <view wx:for="{{punches}}" wx:for-item="punch" wx:key="id" class="timeline-row"><view class="timeline-dot"></view><text class="timeline-time">{{punch.time}}</text><view class="timeline-content"><view>{{punch.event}} <text class="muted">{{punch.result}}</text></view><view wx:if="{{punch.channel}}" class="muted">{{punch.channel}}</view></view></view>
+  </view>
+  <view class="actions"><button class="small" bindtap="openLeave">请假记录</button><button class="small" bindtap="openAgenda">添加日程</button></view>
+  <view class="calendar-footnote">{{monthSavedAt ? '更新：' + monthSavedAt : ''}}</view>
+</view>

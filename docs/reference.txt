@@ -1,0 +1,4 @@
+Reference: https://github.com/wangjt23/SLAIer-APP
+Commit: 0a546650afe37509e03d16025dfbf90727951814
+Reviewed: 2026-09-11
+Original functionality referenced; Android code and restricted brand assets not copied.

@@ -1,0 +1,32 @@
+<view class="page">
+  <view class="row"><view class="title">年假与请假</view><picker mode="date" fields="year" start="2000-01-01" end="2099-12-31" value="{{year + '-01-01'}}" bindchange="changeYear"><view class="badge">{{year}} 年 ⌄</view></picker></view>
+  <view class="subtitle">本机个人记录 · 不向学校提交</view>
+  <view class="card leave-balance" wx:if="{{balance}}">
+    <view class="row"><text>剩余额度</text><button class="small" bindtap="settings">设置</button></view>
+    <view class="number {{balance.remaining < 0 ? 'warn' : ''}}">{{balance.remaining === null ? '—' : balance.remaining}}<text class="unit">天</text></view>
+    <view class="muted">已批准 {{balance.approved}} · 此前已用 {{balance.openingUsed}} · 待审批 {{balance.pending}}</view>
+    <view wx:if="{{balance.pending > 0 && balance.available !== null}}" class="muted">预留待审批后 {{balance.available}} 天</view>
+    <view wx:if="{{balance.remaining < 0}}" class="warn">已超额度，请核对</view>
+  </view>
+  <view wx:if="{{settingsOpen}}" class="card"><form bindsubmit="saveSettings">
+    <view class="field"><text>全年额度（含结转）</text><input name="allowance" data-field="allowance" bindinput="fieldInput" type="digit" value="{{allowance}}" placeholder="按学校规则填写" /></view>
+    <view class="field"><text>此前已用（未逐条录入的部分）</text><input name="openingUsed" data-field="openingUsed" bindinput="fieldInput" type="digit" value="{{openingUsed}}" /></view>
+    <view class="field"><text>请假估算规则</text><picker range="{{rules}}" value="{{ruleIndex}}" bindchange="ruleChange"><view class="picker-value">{{rules[ruleIndex]}} ⌄</view></picker></view>
+    <button form-type="submit" class="primary">保存设置</button>
+  </form></view>
+  <view class="row section"><text>请假记录</text><button class="small" bindtap="add">记一笔</button></view>
+  <view wx:if="{{editing}}" class="card"><form bindsubmit="save">
+    <view class="row field"><picker range="{{kinds}}" value="{{kindIndex}}" data-field="kindIndex" bindchange="change"><view class="picker-value">{{kinds[kindIndex]}} ⌄</view></picker><picker range="{{stateNames}}" value="{{stateIndex}}" data-field="stateIndex" bindchange="change"><view class="picker-value">{{stateNames[stateIndex]}} ⌄</view></picker></view>
+    <view class="field"><text>开始</text><view class="row"><picker mode="date" start="2000-01-01" end="2099-12-31" value="{{start}}" data-field="start" bindchange="change"><view class="picker-value">{{start}} ⌄</view></picker><picker range="{{halves}}" value="{{startHalf}}" data-field="startHalf" bindchange="change"><view class="picker-value">{{halves[startHalf]}} ⌄</view></picker></view></view>
+    <view class="field"><text>结束</text><view class="row"><picker mode="date" start="{{start}}" end="2099-12-31" value="{{end}}" data-field="end" bindchange="change"><view class="picker-value">{{end}} ⌄</view></picker><picker range="{{halves}}" value="{{endHalf}}" data-field="endHalf" bindchange="change"><view class="picker-value">{{halves[endHalf]}} ⌄</view></picker></view></view>
+    <view wx:if="{{estimated !== null && !estimateError}}" class="row estimate"><text>预计扣假 {{estimated}} 天</text><button class="small" bindtap="useEstimate">填入</button></view>
+    <view wx:if="{{estimateError}}" class="muted">{{estimateError}}</view>
+    <view class="field"><text>{{kindIndex === 0 ? '实际扣除年假' : '请假时长'}}（天）</text><input name="days" data-field="days" bindinput="fieldInput" type="digit" value="{{days}}" placeholder="支持 0.5 天，以实际审批为准" /></view>
+    <view wx:if="{{conflictCount}}" class="notice">与 {{conflictCount}} 节课重叠<view wx:for="{{conflicts}}" wx:key="index">{{item.date}} {{item.start}} · {{item.title}}</view></view>
+    <view class="actions"><button bindtap="cancelEdit">取消</button><button form-type="submit" class="primary">保存记录</button></view>
+  </form></view>
+  <view wx:if="{{status}}" class="notice">{{status}}</view>
+  <view wx:for="{{rows}}" wx:key="id" class="card" data-id="{{item.id}}" bindtap="edit"><view class="row"><text>{{item.kindName}} · {{item.days}} 天</text><text class="badge">{{item.stateName}}</text></view><view class="subtitle">{{item.range}}</view></view>
+  <view wx:if="{{!rows.length && !editing}}" class="empty">还没有请假记录</view>
+  <view class="muted">已批准的年假扣除额度；计划、取消不扣除。设置按年保存，换年不自动结转。</view>
+</view>

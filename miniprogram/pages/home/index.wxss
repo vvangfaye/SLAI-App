@@ -1,0 +1,10 @@
+.today-punches .course-title { margin-bottom: 0; }
+.today-punches .punch-status { margin-top: 20rpx; }
+.today-punches .punch-row { border-bottom: 1rpx solid #edf0f4; }
+.today-punches .punch-row:last-child { border-bottom: 0; padding-bottom: 0; }
+.quick-stats { display: flex; background: #fffefa; border: 1rpx solid #e6e4da; border-radius: 24rpx; margin-bottom: 20rpx; padding: 24rpx 0; }
+.quick-stats > view { flex: 1; min-width: 0; padding: 0 22rpx; }
+.quick-stats > view + view { border-left: 1rpx solid #e6e4da; }
+.quick-stats .muted { font-size: 21rpx; }
+.quick-value { color: #386552; font-size: 36rpx; font-weight: 600; margin-top: 12rpx; }
+.quick-value text { font-size: 22rpx; font-weight: 400; }

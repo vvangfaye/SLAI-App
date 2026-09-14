@@ -1,0 +1,14 @@
+@import "../../styles/calendar.wxss";
+.schedule-overview { display: flex; align-items: center; gap: 28rpx; padding: 30rpx 8rpx; }
+.schedule-overview > view { display: flex; align-items: baseline; gap: 12rpx; }
+.overview-number { font-size: 44rpx; color: #365c48; font-weight: 600; }
+.overview-label { font-size: 22rpx; color: #85897e; }
+.schedule-overview .overview-divider { width: 1rpx; height: 34rpx; background: #dfdfd4; }
+.calendar-cell.has-course:not(.selected) .calendar-day { color: #386552; font-weight: 600; }
+.weekday-label { font-weight: 400; font-size: 23rpx; color: #929889; margin-left: 12rpx; }
+.lesson-row { display: flex; gap: 24rpx; margin-top: 28rpx; padding-top: 24rpx; border-top: 1rpx solid #edf0e5; }
+.lesson-clock { min-width: 100rpx; color: #386552; font-size: 30rpx; font-weight: 500; font-variant-numeric: tabular-nums; }
+.lesson-clock text { display: block; font-size: 23rpx; color: #98a08f; margin-top: 10rpx; }
+.lesson-content { flex: 1; min-width: 0; padding-left: 20rpx; border-left: 4rpx solid #c8d8ba; }
+.lesson-title { font-size: 29rpx; line-height: 1.5; font-weight: 600; margin-bottom: 10rpx; }
+.schedule-empty { padding: 36rpx 0 8rpx; color: #61725b; font-size: 27rpx; line-height: 1.9; }

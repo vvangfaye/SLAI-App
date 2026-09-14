@@ -1,0 +1,1 @@
+<view class="page"><view class="title">河套日常</view><view class="subtitle">旧版入口已更新，正在进入首页。</view><view class="actions"><button class="primary" bindtap="home">进入首页</button></view></view>

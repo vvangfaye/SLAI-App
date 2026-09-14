@@ -1,0 +1,6 @@
+Generated with built-in image_gen.
+
+Use case: logo-brand
+Asset type: square WeChat mini-program app icon for 河套日常, a friendly campus daily assistant for schedules and attendance.
+Primary request: Create one polished minimalist icon: a broad flowing river bend gently cradles a simple open-book / campus shape, forming a single memorable compact emblem. A small warm sun above suggests everyday campus life. Strong elegant silhouette, friendly softly curved geometric shapes, tasteful flat vector-like raster finish. Deep blue and fresh teal with a small warm apricot accent on a solid warm ivory background. Centered emblem occupies about 70 percent of canvas, generous consistent safety margin for circular app cropping. Full bleed square background, 1024x1024.
+Constraints: no text, no letters, no watermark, no mockup, no outside frame, no multiple proposals, no tiny details, no gradients or 3D effects. Deliver only the finished icon.

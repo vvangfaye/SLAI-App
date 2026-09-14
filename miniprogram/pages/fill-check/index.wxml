@@ -1,0 +1,20 @@
+<view wx:if="{{enabled}}" class="page">
+  <view class="title">填充检查</view>
+  <view class="subtitle">AF-1 · 仅限开发测试</view>
+  <view wx:if="{{!checked}}">
+    <view class="notice">选择系统保存的校园密码，完成 Face ID 后点击「检查」。不登录、不发送账号密码。</view>
+    <view class="card">
+      <form bindsubmit="check">
+        <view class="field"><view>账号</view><input name="username" data-field="username" type="text" placeholder="校园邮箱或域账号" bindfocus="track" bindblur="track" bindinput="track" bindchange="track" maxlength="120"/></view>
+        <view class="field"><view>密码</view><input name="password" data-field="password" type="text" password="{{true}}" placeholder="选择系统保存的密码" bindfocus="track" bindblur="track" bindinput="track" bindchange="track" maxlength="128"/></view>
+        <button class="primary" form-type="submit">检查</button>
+      </form>
+    </view>
+  </view>
+  <view wx:else>
+    <view class="section">{{result}}</view>
+    <view class="card"><text selectable class="report">{{report}}</text></view>
+    <view class="actions"><button class="primary" bindtap="copyReport">复制检查结果</button><button bindtap="retry">重新检查</button></view>
+  </view>
+  <view class="actions"><button bindtap="back">返回登录</button></view>
+</view>

@@ -1,0 +1,10 @@
+<view class="page">
+  <view class="title">我的</view>
+  <view class="notice">{{label}}</view>
+  <view class="section">日历与休假</view><view class="card"><view class="row" bindtap="openLeave"><text>年假与请假</text><text>→</text></view><view class="divider"></view><view class="row" bindtap="openAgenda"><text>个人日程</text><text>→</text></view><view class="divider"></view><view class="row" bindtap="exportCalendar"><text>导出课表</text><text>→</text></view></view>
+  <view class="section">数据与连接</view><view class="card"><view class="course-title">本地数据</view><view class="muted">课表更新：{{savedAt}}</view><view class="divider"></view><view class="row"><view><view>学校系统</view><view class="muted">{{remembered ? '已记住登录' : connected ? '本次已登录' : '未登录'}}</view></view><button class="small" bindtap="integration" disabled="{{busy}}">登录 / 切换账号</button></view></view>
+  <view class="actions"><button bindtap="sync" loading="{{busy}}" disabled="{{busy}}">同步</button><button wx:if="{{connected || remembered}}" bindtap="logout" disabled="{{busy}}">退出登录</button></view><view wx:if="{{status}}" class="notice">{{status}}</view>
+  <view class="section">个人偏好</view><view class="card"><view class="row"><view>首页显示今日课程</view><switch color="#386552" checked="{{showCourses}}" bindchange="showChange"/></view><view class="divider"></view><view class="row"><text>每日在校目标</text><text>{{target}} 小时</text></view><slider min="1" max="24" step="1" value="{{target}}" activeColor="#386552" bindchange="targetChange"/><view class="muted">个人目标，不影响学校判定。</view></view>
+  <view class="section">关于</view><view class="card"><view class="muted">河套日常 · 非官方校园工具</view><view class="divider"></view><view class="muted">记住登录使用本机加密存储。在校时长以学校汇总为准。</view></view>
+  <button wx:if="{{source !== 'demo'}}" bindtap="clearData" disabled="{{busy}}">清除数据</button>
+</view>

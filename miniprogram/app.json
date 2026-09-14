@@ -1,0 +1,46 @@
+{
+  "pages": [
+    "pages/home/index",
+    "pages/schedule/index",
+    "pages/attendance/index",
+    "pages/settings/index",
+    "pages/login/index",
+    "pages/probe/index",
+    "pages/fill-check/index",
+    "pages/leave/index",
+    "pages/agenda/index",
+    "pages/calendar-export/index"
+  ],
+  "window": {
+    "navigationBarTitleText": "河套日常",
+    "navigationBarBackgroundColor": "#f5f2eb",
+    "navigationBarTextStyle": "black",
+    "backgroundColor": "#f5f2eb"
+  },
+  "tabBar": {
+    "color": "#87919f",
+    "selectedColor": "#386552",
+    "backgroundColor": "#ffffff",
+    "borderStyle": "white",
+    "list": [
+      {
+        "pagePath": "pages/home/index",
+        "text": "日常"
+      },
+      {
+        "pagePath": "pages/schedule/index",
+        "text": "课表"
+      },
+      {
+        "pagePath": "pages/attendance/index",
+        "text": "考勤"
+      },
+      {
+        "pagePath": "pages/settings/index",
+        "text": "我的"
+      }
+    ]
+  },
+  "style": "v2",
+  "sitemapLocation": "sitemap.json"
+}

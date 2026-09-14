@@ -1,0 +1,4 @@
+.leave-balance { margin-top: 28rpx; }
+.picker-value { padding: 18rpx 16rpx; background: #f5f2eb; border-radius: 12rpx; margin-top: 10rpx; font-size: 25rpx; }
+.estimate { margin-bottom: 20rpx; color: #386552; }
+.number { margin: 18rpx 0; }

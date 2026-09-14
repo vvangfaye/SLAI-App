@@ -1,0 +1,24 @@
+<view class="page attendance-page schedule-page">
+  <view class="row"><view class="title">课表</view><button class="small" bindtap="exportCalendar">导出</button></view>
+  <view class="source-caption">{{label}} {{updatedAt ? '· 更新 ' + updatedAt : ''}}</view>
+  <view class="schedule-overview"><view><text class="overview-number">{{count}}</text><text class="overview-label">本月课次</text></view><view class="overview-divider"></view><view><text class="overview-number">{{classDays}}</text><text class="overview-label">上课天数</text></view></view>
+  <view class="calendar-panel">
+    <view class="calendar-heading"><picker mode="date" fields="month" value="{{month}}" bindchange="changeMonth"><view class="month-title">{{yearTitle}}<text>{{monthTitle}}</text><text class="month-caret">⌄</text></view></picker><view class="calendar-controls"><button bindtap="prev" aria-label="上个月">‹</button><button class="back-today" bindtap="current">今天</button><button bindtap="next" aria-label="下个月">›</button></view></view>
+    <view class="calendar-weekdays"><text wx:for="{{weekdays}}" wx:key="*this">{{item}}</text></view>
+    <view class="calendar-grid"><button wx:for="{{cells}}" wx:key="date" class="calendar-cell {{!item.inMonth ? 'outside' : ''}} {{item.today ? 'is-today' : ''}} {{item.count ? 'has-course' : ''}} {{selectedDate === item.date ? 'selected' : ''}}" disabled="{{!item.inMonth}}" data-date="{{item.date}}" bindtap="selectDay" aria-label="{{item.date}} {{item.caption}} {{item.holiday.detail}} {{item.personalMark}}"><text wx:if="{{item.inMonth && item.holiday.badge}}" class="holiday-mark {{item.holiday.type}}">{{item.holiday.badge}}</text><text wx:if="{{item.inMonth && (item.personalMark || item.schoolLeave)}}" class="personal-mark">{{item.personalMark || '假'}}</text><view class="calendar-day">{{item.day}}<text wx:if="{{item.today}}" class="today-mark"></text></view><view class="calendar-duration">{{item.caption}}</view><view class="state-dot {{item.count ? 'qualified' : 'none'}}"></view></button></view>
+    <view class="calendar-legend"><view>休 放假 · 班 调休</view><view>假 请假 · 事 日程</view><view><text class="state-dot qualified"></text>有课</view><view>— 无课程安排</view></view>
+  </view>
+  <view class="day-panel">
+    <view class="row"><view class="selected-title">{{selectedTitle}}<text class="weekday-label">{{selectedWeekday}}</text></view><view wx:if="{{isToday}}" class="badge">今天</view></view>
+    <view class="subtitle">{{weekLabel}} · {{courses.length}} 门课</view>
+    <view wx:if="{{holiday.detail}}" class="day-context">{{holiday.detail}}</view>
+    <view wx:if="{{schoolLeave}}" class="day-context">学校标记：请假</view>
+    <view wx:for="{{personalDay.leaves}}" wx:key="id" class="day-context" bindtap="openLeave">个人记录 · {{item.kindName}} · {{item.stateName}}</view>
+    <view wx:for="{{personalDay.events}}" wx:key="id" class="day-context" bindtap="openAgenda">{{item.time || '全天'}} · {{item.title}}</view>
+    <view wx:if="{{personalError}}" class="notice">{{personalError}}</view>
+    <view wx:for="{{courses}}" wx:key="id" class="lesson-row"><view class="lesson-clock"><view>{{item.start}}</view><text>{{item.end}}</text></view><view class="lesson-content"><view class="lesson-title">{{item.title}}</view><view class="muted">{{item.room || '地点待定'}}</view><view wx:if="{{item.teacher}}" class="muted">{{item.teacher}}</view></view></view>
+    <view class="actions"><button class="small" bindtap="openAgenda">添加日程</button><button class="small" bindtap="openLeave">请假记录</button></view>
+    <view wx:if="{{!courses.length}}" class="schedule-empty"><view>当日无课</view></view>
+  </view>
+  <view class="calendar-footnote">放假调休按国务院安排；课程调整以学校课表为准。</view>
+</view>

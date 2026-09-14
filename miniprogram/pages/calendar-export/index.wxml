@@ -1,0 +1,6 @@
+<view class="page"><view class="title">导出课表</view><view class="subtitle">生成 .ics 日历文件</view>
+  <view class="card export-card"><view class="row field"><text>开始</text><picker mode="date" value="{{start}}" data-field="start" bindchange="change"><view>{{start}} ⌄</view></picker></view><view class="row field"><text>结束</text><picker mode="date" value="{{end}}" data-field="end" bindchange="change"><view>{{end}} ⌄</view></picker></view><view class="row"><text>{{count}} 节课</text><button class="small" bindtap="semester">整个学期</button></view></view>
+  <view wx:if="{{demo}}" class="notice">当前为演示数据，请先同步真实课表。</view><view wx:if="{{status}}" class="notice">{{status}}</view>
+  <button class="primary" bindtap="exportFile" loading="{{busy}}" disabled="{{busy || !count || demo}}">导出到微信文件</button>
+  <view class="subtitle">将文件保存后，在支持 .ics 的日历应用中导入。课程按北京时间导出；调课后需重新导出，建议导入独立日历，更新时替换旧日历以免重复。</view>
+</view>
