@@ -1,5 +1,7 @@
 # 河套日常
 
+本项目采用 [MIT 许可证](LICENSE)。
+
 采用独立名称与视觉设计的微信原生校园生活小程序；学校接口适配参考 [wangjt23/SLAIer-APP](https://github.com/wangjt23/SLAIer-APP)。使用 JavaScript / WXML / WXSS，无需 npm 安装或构建。
 
 已接入学校登录、当前学期课表同步和按月考勤汇总，保存在本机供离线查看。独立验证页已通过真实账号手机测试（本次考勤测试需 VPN）；新接入的主页面及月汇总、节次时间接口仍需手机验收，尚未发布正式版。详见 [验证记录](docs/login-verification.md)。

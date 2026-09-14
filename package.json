@@ -1,6 +1,7 @@
 {
   "name": "hetao-daily",
   "version": "1.0.1",
+  "license": "MIT",
   "private": true,
   "scripts": {
     "test": "node --test tests/*.test.js"
