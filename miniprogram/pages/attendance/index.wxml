@@ -30,8 +30,15 @@
   <view wx:if="{{anomalies.length}}" class="anomaly-panel"><button class="day-toggle" bindtap="showAnomalies">{{anomalies.length}} 天未达标待核对 {{anomaliesOpen ? '⌃' : '⌄'}}</button><view wx:if="{{anomaliesOpen}}"><button wx:for="{{anomalies}}" wx:key="date" class="day-toggle anomaly-row" data-date="{{item.date}}" bindtap="selectDay">{{item.date}} · {{item.duration}} →</button></view></view>
   <view wx:if="{{status}}" class="notice">{{status}}</view>
   <view class="day-panel">
-    <view class="row"><view class="selected-title">{{selectedTitle}}</view><view wx:if="{{selected}}" class="badge">{{selected.status}}</view></view>
-    <view class="selected-duration">{{selected ? selected.duration : selectedFuture ? '暂无记录' : '暂无当日汇总'}}</view>
+    <view class="row"><view class="selected-title">{{selectedTitle}}</view><view wx:if="{{live || selected || selectedToday}}" class="badge">{{live ? live.status : selectedToday ? (punchLoading ? '读取中' : '待更新') : selected.status}}</view></view>
+    <view class="selected-duration">{{live ? live.duration : selectedToday ? '待获取打卡记录' : selected ? selected.duration : selectedFuture ? '暂无记录' : '暂无当日汇总'}}</view>
+    <view wx:if="{{live}}" class="day-context">{{live.hint}}</view>
+    <view wx:if="{{live.targetText}}" class="day-context">{{live.targetText}}</view>
+    <view wx:if="{{live}}" class="day-context">今日估算 · 仅计学院进出 · {{live.updated}} 更新{{live.stale ? ' · 待刷新' : ' · 每分钟自动刷新'}}</view>
+    <view wx:if="{{live.ignoredText}}" class="day-context">{{live.ignoredText}}</view>
+    <view wx:if="{{live.warning}}" class="notice">{{live.warning}}</view>
+    <view wx:for="{{live.sessions}}" wx:for-item="session" wx:key="id" class="day-context">{{session.start}} → {{session.end}} · {{session.duration}}</view>
+    <view wx:if="{{selectedToday && selected}}" class="day-context">学校汇总：{{selected.duration}} · {{selected.status}}</view>
     <view wx:if="{{holiday.detail}}" class="day-context">{{holiday.detail}}</view>
     <view wx:if="{{selected.leave}}" class="day-context">学校标记：请假</view>
     <view wx:for="{{personalDay.leaves}}" wx:key="id" class="day-context" bindtap="openLeave">个人记录 · {{item.kindName}} · {{item.stateName}}</view>
@@ -41,7 +48,7 @@
     <view wx:if="{{punchLoading}}" class="detail-note">读取中…</view>
     <view wx:elif="{{expanded !== selectedDate}}" class="detail-note">{{selectedFuture ? '暂无记录' : '点击刷新查看'}}</view>
     <view wx:elif="{{punchStatus}}" class="detail-note">{{punchStatus}}</view>
-    <view wx:for="{{punches}}" wx:for-item="punch" wx:key="id" class="timeline-row"><view class="timeline-dot"></view><text class="timeline-time">{{punch.time}}</text><view class="timeline-content"><view>{{punch.event}} <text class="muted">{{punch.result}}</text></view><view wx:if="{{punch.channel}}" class="muted">{{punch.channel}}</view></view></view>
+    <view wx:for="{{punches}}" wx:for-item="punch" wx:key="id" class="timeline-row"><view class="timeline-dot"></view><text class="timeline-time">{{punch.time}}</text><view class="timeline-content"><view>{{punch.event}} <text class="muted">{{punch.result}}</text></view><view wx:if="{{punch.channel}}" class="muted">{{punch.channel}}</view><view wx:if="{{punch.place}}" class="muted">{{punch.place}}</view></view></view>
   </view>
   <view class="actions"><button class="small" bindtap="openLeave">请假记录</button><button class="small" bindtap="openAgenda">添加日程</button></view>
   <view class="calendar-footnote">{{monthSavedAt ? '更新：' + monthSavedAt : ''}}</view>

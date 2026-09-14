@@ -6,7 +6,7 @@ function parsePage(payload) {
     if (!match) throw new Error('打卡时间格式变化，未显示不完整明细');
     d.parseDate(match[1]);
     const text = key => typeof row[key] === 'string' ? row[key].slice(0, 120) : '';
-    return { id: String(row.id || [row.swipeTime, row.eventType, row.channelName].join('|')), date: match[1], time: `${match[2]}:${match[3]}${match[4] ? ':' + match[4] : ''}`, event: text('eventType') || '方向未提供', channel: text('channelName'), result: text('openingResult') };
+    return { id: String(row.id || [row.swipeTime, row.eventType, row.channelName, row.swipeType, row.openingResult].join('|')), date: match[1], time: `${match[2]}:${match[3]}${match[4] ? ':' + match[4] : ''}`, event: text('eventType') || '方向未提供', channel: text('channelName'), place: text('swipeType'), result: text('openingResult') };
   });
   return { count: Number(payload.count), records };
 }

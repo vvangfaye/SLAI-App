@@ -8,3 +8,9 @@
 .quick-stats .muted { font-size: 21rpx; }
 .quick-value { color: #386552; font-size: 36rpx; font-weight: 600; margin-top: 12rpx; }
 .quick-value text { font-size: 22rpx; font-weight: 400; }
+.attendance-active { background: #d8edca; color: #234b32; }
+.live-hint { font-size: 27rpx; line-height: 1.6; }
+.live-warning { margin-top: 16rpx; color: #ffe0a8; font-size: 23rpx; line-height: 1.7; }
+.live-caption { margin-top: 12rpx; color: #dae6d6; font-size: 21rpx; line-height: 1.6; }
+.attendance-sessions { margin-top: 22rpx; padding-bottom: 18rpx; border-bottom: 1rpx solid #edf0f4; }
+.attendance-session { display: flex; justify-content: space-between; gap: 20rpx; font-size: 25rpx; padding-top: 12rpx; color: #386552; }
