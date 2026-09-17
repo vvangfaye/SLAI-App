@@ -19,7 +19,7 @@ function validatePath(path) {
   }
 }
 function urlParts(input) {
-  const m = /^https:\/\/([a-z0-9.-]+)(\/[^?#]*)?(\?[^#]*)?$/i.exec(input);
+  const m = /^https:\/\/([a-z0-9.-]+)(?::443)?(\/[^?#]*)?(\?[^#]*)?$/i.exec(input);
   if (!m) throw new Error('认证跳转超出学校 HTTPS 域名范围');
   let host = m[1].toLowerCase();
   let path = m[2] || '/';
@@ -140,6 +140,11 @@ class LoginProbe {
     if (urlParts(target).host !== 'sts.slai.edu.cn') throw new Error('认证表单目标不是学校身份服务器');
     const body = `UserName=${encodeURIComponent(username)}&Password=${encodeURIComponent(password)}&AuthMethod=FormsAuthentication`;
     const result = await this.request(target, 'POST', body);
+    if (result.statusCode >= 500 && result.statusCode < 600) {
+      const error = new Error(`认证服务暂时不可用（HTTP ${result.statusCode}），请稍后重试`);
+      error.code = 'AUTH_SERVER_ERROR';
+      throw error;
+    }
     if (urlParts(result.url).host === 'sts.slai.edu.cn') {
       const error = new Error('认证未完成：可能是账号格式、密码或二次验证；请先在学校网页确认，不自动重试');
       error.code = 'AUTH_REQUIRED';

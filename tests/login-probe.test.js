@@ -9,6 +9,56 @@ test('三个学校逻辑域映射到单一代理且保留路径与查询串', ()
   assert.throws(() => transportUrl('https://example.com/'));
   assert.throws(() => resolve('https://sis.slai.edu.cn/', '//sts.slai.edu.cn/'));
 });
+test('学校及代理 HTTPS 地址接受显式 443 端口，其他端口仍被拒绝', () => {
+  const query = '?state=a%2Bb&client-request-id=test-only';
+  for (const route of ['sis', 'sts', 'stu']) {
+    const logical = `https://${route}.slai.edu.cn/adfs/login${query}`;
+    for (const target of [`https://${route}.slai.edu.cn:443/adfs/login${query}`, `https://openslai.cn:443/_slai/${route}/adfs/login${query}`]) {
+      assert.equal(resolve('https://sis.slai.edu.cn/start', target), logical);
+      assert.equal(transportUrl(target), `https://openslai.cn/_slai/${route}/adfs/login${query}`);
+    }
+  }
+  for (const authority of ['sts.slai.edu.cn:80', 'sts.slai.edu.cn:444', 'openslai.cn:8443', 'sts.slai.edu.cn:443@other.invalid']) {
+    assert.throws(() => transportUrl(`https://${authority}/adfs/login`));
+  }
+  assert.throws(() => transportUrl('https://sts.slai.edu.cn:443/../sis/callback'), /路径/);
+});
+test('认证中携带显式 443 的同域回跳保持 Cookie，完成后正常读取教务', async () => {
+  const calls = [];
+  const replies = [
+    { statusCode: 302, header: { Location: 'https://sts.slai.edu.cn/adfs/login' } },
+    { statusCode: 200, header: {}, data: '<form id="loginForm" action="https://sts.slai.edu.cn:443/adfs/login"></form>FormsAuthentication' },
+    { statusCode: 302, header: { Location: 'https://sts.slai.edu.cn:443/adfs/login?client-request-id=test-only', 'Set-Cookie': 'adfs=test-session; Path=/' } },
+    { statusCode: 302, header: { Location: 'https://sis.slai.edu.cn:443/callback?code=test-only' } },
+    { statusCode: 200, header: {}, data: 'ok' }
+  ];
+  const probe = new LoginProbe(async options => { calls.push(options); return replies.shift(); });
+  await probe.authenticate('https://sis.slai.edu.cn/start', 'demo@example.invalid', 'test-only');
+  assert.equal(calls[3].url, 'https://openslai.cn/_slai/sts/adfs/login?client-request-id=test-only');
+  assert.equal(calls[3].header.Cookie, 'adfs=test-session');
+  assert.equal(calls[3].method, 'GET');
+  assert.equal(calls[3].data, '');
+  assert.equal(calls[4].header.Cookie, '');
+  assert.equal(replies.length, 0);
+});
+test('登录回跳返回 5xx 时报告服务异常，不将其归类为凭据失效', async () => {
+  for (const host of ['sts', 'sis']) {
+    for (const statusCode of [500, 502, 503]) {
+      const replies = [
+        { statusCode: 302, header: { Location: 'https://sts.slai.edu.cn/adfs/login' } },
+        { statusCode: 200, header: {}, data: '<form id="loginForm" action="/adfs/login"></form>FormsAuthentication' },
+        { statusCode: 302, header: { Location: `https://${host}.slai.edu.cn:443/callback` } },
+        { statusCode, header: {}, data: 'Bad Gateway' }
+      ];
+      const probe = new LoginProbe(async () => replies.shift());
+      await assert.rejects(probe.authenticate('https://sis.slai.edu.cn/start', 'demo@example.invalid', 'test-only'), error => {
+        assert.equal(error.code, 'AUTH_SERVER_ERROR');
+        assert.match(error.message, new RegExp(`HTTP ${statusCode}`));
+        return true;
+      });
+    }
+  }
+});
 const unsafePaths = [
   '/../sis/callback', '/./adfs/login', '/adfs/../../sis/callback', '/adfs//../sis/callback',
   '/%2e%2e/sis/callback', '/.%2E/sis/callback', '/%2E./sis/callback',
