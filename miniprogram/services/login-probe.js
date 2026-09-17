@@ -3,17 +3,36 @@ const ROUTE_HOSTS = { sis: 'sis.slai.edu.cn', sts: 'sts.slai.edu.cn', stu: 'stu.
 const ROUTES = {};
 Object.keys(ROUTE_HOSTS).forEach(route => { ROUTES[ROUTE_HOSTS[route]] = route; });
 const HOSTS = Object.keys(ROUTES);
-const PROXY_ROOT = 'https://openslai.cn/_slai/';
-function canonicalUrl(input) {
-  const routed = /^https:\/\/openslai\.cn\/_slai\/([a-z]+)(\/[^#]*)?$/i.exec(input);
-  const host = routed && ROUTE_HOSTS[routed[1].toLowerCase()];
-  return host ? `https://${host}${routed[2] || '/'}` : input;
+const PROXY_ORIGIN = 'https://openslai.cn';
+const PROXY_ROOT = `${PROXY_ORIGIN}/_slai/`;
+function validatePath(path) {
+  const invalid = () => new Error('认证跳转路径包含不安全的点段或分隔符，已停止请求');
+  if (/[\u0000-\u0020\u007f]/.test(path)) throw invalid();
+  // Nginx decodes paths before selecting a route. Reject ambiguous paths before
+  // adding the proxy prefix, including nested encoding across proxy hops.
+  let decoded = path;
+  for (;;) {
+    if (/[\\\u0000-\u001f\u007f]|%(?:2f|5c)/i.test(decoded) || decoded.split('/').some(part => /^\.\.?$/.test(part.trim()))) throw invalid();
+    const next = decoded.replace(/%([0-9a-f]{2})/gi, (_, hex) => String.fromCharCode(parseInt(hex, 16)));
+    if (next === decoded) return;
+    decoded = next;
+  }
 }
 function urlParts(input) {
-  const url = canonicalUrl(input);
-  const m = /^https:\/\/([a-z0-9.-]+)(\/[^#]*)?$/i.exec(url);
-  if (!m || !HOSTS.includes(m[1].toLowerCase())) throw new Error('认证跳转超出学校 HTTPS 域名范围');
-  return { host: m[1].toLowerCase(), path: (m[2] || '/').split('?')[0], url };
+  const m = /^https:\/\/([a-z0-9.-]+)(\/[^?#]*)?(\?[^#]*)?$/i.exec(input);
+  if (!m) throw new Error('认证跳转超出学校 HTTPS 域名范围');
+  let host = m[1].toLowerCase();
+  let path = m[2] || '/';
+  validatePath(path);
+  if (host === 'openslai.cn') {
+    const routed = /^\/_slai\/(sis|sts|stu)(\/.*)?$/.exec(path);
+    if (!routed) throw new Error('认证跳转包含未知代理路由');
+    host = ROUTE_HOSTS[routed[1]];
+    path = routed[2] || '/';
+  }
+  if (!HOSTS.includes(host)) throw new Error('认证跳转超出学校 HTTPS 域名范围');
+  // Keep the query byte-for-byte: SSO state and callback URLs are opaque data.
+  return { host, path, url: `https://${host}${path}${m[3] || ''}` };
 }
 function transportUrl(url) {
   const logical = urlParts(url);
@@ -26,6 +45,7 @@ function proxyTransport(transport) {
 function resolve(base, target) {
   let url;
   if (/^https:\/\//i.test(target)) url = target;
+  else if (/^\/_slai(?:\/|\?|$)/.test(target)) url = PROXY_ORIGIN + target;
   else if (target.startsWith('/') && !target.startsWith('//')) url = `https://${urlParts(base).host}${target}`;
   else if (target.startsWith('?')) url = urlParts(base).url.split('?')[0] + target;
   else throw new Error('遇到未支持的跳转形式，需要进一步适配');

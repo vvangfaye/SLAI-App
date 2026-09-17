@@ -9,6 +9,119 @@ test('三个学校逻辑域映射到单一代理且保留路径与查询串', ()
   assert.throws(() => transportUrl('https://example.com/'));
   assert.throws(() => resolve('https://sis.slai.edu.cn/', '//sts.slai.edu.cn/'));
 });
+const unsafePaths = [
+  '/../sis/callback', '/./adfs/login', '/adfs/../../sis/callback', '/adfs//../sis/callback',
+  '/%2e%2e/sis/callback', '/.%2E/sis/callback', '/%2E./sis/callback',
+  '/%2e/adfs/login', '/adfs/%2E%2e/../sis/callback',
+  '/%252e%252E/sis/callback', '/%25252e%25252e/sis/callback',
+  '/..%2fsis/callback', '/%2F../sis/callback', '/..%252Fsis/callback',
+  '/..\\sis/callback', '/..%5csis/callback', '/..%255csis/callback',
+  '/.\t./sis/callback', '/.%0a./sis/callback', '/.%250d./sis/callback', '/..%20/sis/callback'
+];
+test('逻辑 URL 与代理 URL 均拒绝点段及编码分隔符，查询串保持原样', () => {
+  for (const path of unsafePaths) {
+    for (const root of ['https://sts.slai.edu.cn', 'https://openslai.cn/_slai/sts']) {
+      assert.throws(() => transportUrl(root + path), /路径/, root + path);
+      assert.throws(() => resolve('https://sts.slai.edu.cn/adfs/login', root + path), /路径/, root + path);
+    }
+    assert.throws(() => resolve('https://sts.slai.edu.cn/adfs/login', path), /路径/, path);
+  }
+  const path = '/adfs/v1.0/login%20name';
+  const query = '?redirect=%2F..%2Fsis%2Fcallback&state=a%252Bb&value=../%2e%5c';
+  assert.equal(transportUrl('https://sts.slai.edu.cn' + path + query), 'https://openslai.cn/_slai/sts' + path + query);
+  assert.equal(resolve('https://sts.slai.edu.cn/adfs/login', query), 'https://sts.slai.edu.cn/adfs/login' + query);
+});
+test('初始请求路径不安全时不会调用传输层', async () => {
+  const calls = [];
+  const probe = new LoginProbe(async options => { calls.push(options); return { statusCode: 200, header: {} }; });
+  for (const path of unsafePaths) {
+    await assert.rejects(probe.request('https://sts.slai.edu.cn' + path, 'POST', 'Password=test'), /路径/);
+  }
+  assert.equal(calls.length, 0);
+});
+test('点段重定向在后续请求前停止，不转发原 Cookie 或 POST 数据', async () => {
+  for (const statusCode of [302, 307, 308]) {
+    for (const path of unsafePaths) {
+      const calls = [];
+      const probe = new LoginProbe(async options => {
+        calls.push(options);
+        return calls.length === 1 ? { statusCode, header: { Location: path } } : { statusCode: 200, header: {} };
+      });
+      probe.jar.receive('https://sts.slai.edu.cn/adfs/login', ['adfs=test-session; Path=/']);
+      await assert.rejects(probe.request('https://sts.slai.edu.cn/adfs/login', 'POST', 'Password=test'), /路径/);
+      assert.equal(calls.length, 1, `${statusCode}: ${path}`);
+    }
+  }
+});
+test('代理根相对跳转还原逻辑域，未知代理路由被拒绝', () => {
+  for (const route of ['sis', 'sts', 'stu']) {
+    const target = `/_slai/${route}/adfs/login?state=a%2Bb&return=%2F..%2F`;
+    const logical = resolve('https://sis.slai.edu.cn/start', target);
+    assert.equal(logical, `https://${route}.slai.edu.cn/adfs/login?state=a%2Bb&return=%2F..%2F`);
+    assert.equal(transportUrl(logical), 'https://openslai.cn' + target);
+    assert.equal(transportUrl(transportUrl(logical)), transportUrl(logical));
+    assert.equal(resolve('https://sis.slai.edu.cn/start', `/_slai/${route}`), `https://${route}.slai.edu.cn/`);
+  }
+  for (const target of ['/_slai/other/login', '/_slai', '/_slai/', '/_slai/%73ts/login', '/_slai/sts/../sis/login', '/_slai/../sis/login', '/_slai/sts/%2e%2e/sis/login']) {
+    assert.throws(() => resolve('https://sis.slai.edu.cn/start', target), undefined, target);
+    assert.throws(() => transportUrl('https://openslai.cn' + target), undefined, target);
+  }
+});
+test('代理相对跳转后的 Cookie 按目标学校归属，302 清除 POST 内容', async () => {
+  const calls = [];
+  const replies = [
+    { statusCode: 302, header: { Location: '/_slai/sts/adfs/login' } },
+    { statusCode: 302, header: { Location: '/_slai/sis/callback', 'Set-Cookie': 'adfs=new-session; Path=/' } },
+    { statusCode: 200, header: {}, data: 'ok' }
+  ];
+  const probe = new LoginProbe(async options => { calls.push(options); return replies.shift(); });
+  probe.jar.receive('https://sis.slai.edu.cn/', ['sis=test-sis; Path=/']);
+  probe.jar.receive('https://sts.slai.edu.cn/', ['adfs=test-sts; Path=/']);
+  const result = await probe.request('https://sis.slai.edu.cn/start', 'POST', 'Password=test');
+  assert.deepEqual(calls.map(call => [call.url, call.method, call.data, call.header.Cookie]), [
+    ['https://openslai.cn/_slai/sis/start', 'POST', 'Password=test', 'sis=test-sis'],
+    ['https://openslai.cn/_slai/sts/adfs/login', 'GET', '', 'adfs=test-sts'],
+    ['https://openslai.cn/_slai/sis/callback', 'GET', '', 'sis=test-sis']
+  ]);
+  assert.equal(probe.jar.forUrl('https://sts.slai.edu.cn/'), 'adfs=new-session');
+  assert.equal(result.url, 'https://sis.slai.edu.cn/callback');
+});
+test('代理相对跳转的 307/308 仍禁止跨域转发 POST', async () => {
+  for (const statusCode of [307, 308]) {
+    const calls = [];
+    const probe = new LoginProbe(async options => {
+      calls.push(options);
+      return { statusCode, header: { Location: '/_slai/sis/callback' } };
+    });
+    await assert.rejects(probe.request('https://sts.slai.edu.cn/adfs/login', 'POST', 'Password=test'), /跨域 POST/);
+    assert.equal(calls.length, 1);
+  }
+});
+test('认证表单支持代理根相对 action，并拒绝越界路径及其他逻辑域', async () => {
+  const actions = ['/_slai/sts/adfs/login?state=a%2Bb', '/_slai/sis/callback', '/_slai/other/login', ...unsafePaths];
+  for (const action of actions) {
+    const calls = [];
+    const replies = [
+      { statusCode: 302, header: { Location: '/_slai/sts/adfs/login' } },
+      { statusCode: 200, header: {}, data: `<form id="loginForm" action="${action}"></form>FormsAuthentication` },
+      { statusCode: 302, header: { Location: '/_slai/sis/callback' } },
+      { statusCode: 200, header: {}, data: 'ok' }
+    ];
+    const probe = new LoginProbe(async options => { calls.push(options); return replies.shift(); });
+    if (action === actions[0]) {
+      await probe.authenticate('https://sis.slai.edu.cn/start', 'demo@example.invalid', 'test-only');
+      assert.equal(calls[2].url, 'https://openslai.cn' + action);
+      assert.equal(calls[2].method, 'POST');
+      assert.match(calls[2].data, /Password=test-only/);
+      assert.equal(calls[3].method, 'GET');
+      assert.equal(calls[3].data, '');
+    } else {
+      await assert.rejects(probe.authenticate('https://sis.slai.edu.cn/start', 'demo@example.invalid', 'test-only'));
+      assert.equal(calls.length, 2, action);
+      assert.ok(calls.every(call => call.method === 'GET' && call.data === ''), action);
+    }
+  }
+});
 test('请求仅发送到代理并以学校逻辑地址处理重定向', async () => {
   const calls = [];
   const replies = [
@@ -66,16 +179,18 @@ test('307 跨域携带密码的跳转被阻止', async () => {
   const probe = new LoginProbe(async () => ({ statusCode: 307, header: { Location: 'https://sis.slai.edu.cn/' } }));
   await assert.rejects(probe.request('https://sts.slai.edu.cn/', 'POST', 'Password=test'), /跨域 POST/);
 });
-test('308 同域保留 POST，303 随后切换为 GET', async () => {
+test('308 同域代理相对跳转保留 POST，303 随后切换为 GET', async () => {
   const calls = [];
   const replies = [
-    { statusCode: 308, header: { Location: '/adfs/next' } },
+    { statusCode: 308, header: { Location: '/_slai/sts/adfs/next' } },
     { statusCode: 303, header: { Location: '?done=1' } },
     { statusCode: 200, header: {}, data: '' }
   ];
   const probe = new LoginProbe(async options => { calls.push(options); return replies.shift(); });
   await probe.request('https://sts.slai.edu.cn/adfs/login', 'POST', 'Password=test');
   assert.deepEqual(calls.map(call => [call.method, call.data]), [['POST', 'Password=test'], ['POST', 'Password=test'], ['GET', '']]);
+  assert.equal(calls[1].url, 'https://openslai.cn/_slai/sts/adfs/next');
+  assert.equal(calls[2].url, 'https://openslai.cn/_slai/sts/adfs/next?done=1');
 });
 test('业务 JSON 形状验证后才报告通过，凭据不会写入日志', async () => {
   const replies = [
