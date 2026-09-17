@@ -1,4 +1,4 @@
-<view class="page"><view class="title">直接登录，实测验证</view><view class="notice">实验功能：本次只尝试一次校园认证，读取课程条数和最多一条考勤。密码直接发往学校 sts.slai.edu.cn，不经过自建服务器，不持久化凭据和业务数据。</view>
+<view class="page"><view class="title">学校登录，实测验证</view><view class="notice">实验功能：本次只尝试一次校园认证，读取课程条数和最多一条考勤。密码仅提交给已识别的学校认证表单，经 openslai.cn 代理转发，不持久化凭据和业务数据。</view>
 <view class="card"><button disabled="{{busy}}" bindtap="preflight">先检查登录入口（无需密码）</button><view class="divider"></view><view class="field"><text>校园账号（学校要求的邮箱或域账号格式）</text><input value="{{username}}" bindinput="userInput" disabled="{{busy}}" placeholder="与学校登录页填写一致"/></view><view class="field"><text>校园密码</text><input password value="{{password}}" bindinput="passwordInput" disabled="{{busy}}" placeholder="仅用于本次验证"/></view><button class="primary" disabled="{{busy}}" loading="{{busy}}" bindtap="run">向学校登录并验证只读接口</button></view>
 <view class="section">{{status}}</view><view class="card" wx:for="{{messages}}" wx:key="*this"><view class="muted">{{item}}</view></view>
-<view class="muted">需要配置 sis.slai.edu.cn、sts.slai.edu.cn、stu.slai.edu.cn 为 request 合法域名，基础库至少 3.2.2。若考勤系统仅校园网可达，需使用校园网络。开发工具调试通过不代表普通真机环境通过。验证页仅用于开发测试，上线前移除。</view></view>
+<view class="muted">需要将 openslai.cn 配置为 request 合法域名，基础库至少 3.2.2，并确认代理通道在线。开发工具调试通过不代表普通真机环境通过。验证页仅用于开发测试，上线前移除。</view></view>

@@ -12,5 +12,5 @@
   <view class="notice" wx:if="{{status}}">{{status}}</view>
   <button class="fill-help" bindtap="fillHelp" disabled="{{busy}}">填充帮助</button>
   <view class="card muted">{{remember ? '登录凭据加密保存在本机，退出登录时清除。' : '仅本次登录，不保存密码。'}}切换账号将替换本机缓存。</view>
-  <view class="muted">校外同步考勤需连接校园 VPN。</view>
+  <view class="muted">同步需要校园代理通道在线。</view>
 </view>

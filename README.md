@@ -15,8 +15,8 @@
 ## 运行
 
 1. 使用微信开发者工具导入项目，无需安装依赖或构建。
-2. 将 `project.config.json` 中的 AppID 替换为自己的，并在小程序后台配置 request 合法域名：`https://sis.slai.edu.cn`、`https://sts.slai.edu.cn`、`https://stu.slai.edu.cn`。
-3. 选择「普通编译」。首次打开可浏览演示数据，登录学校账号后同步真实数据；访问考勤需校园网或可访问学校的 VPN。
+2. 将 `project.config.json` 中的 AppID 替换为自己的，并在小程序后台将 `https://openslai.cn` 配置为 request 合法域名。
+3. 选择「普通编译」。首次打开可浏览演示数据；代理通道在线时，登录学校账号后可同步真实数据。
 
 运行本地测试：`npm test`（需 Node.js）。
 

@@ -87,7 +87,7 @@ async function withLogin(operation) {
 async function json(client, url, method = 'GET', body = '') {
   let res;
   try { res = await client.request(url, method, body); }
-  catch (e) { if (client.cancelled) throw e; throw error(url.includes('stu.slai.edu.cn') ? '考勤连接失败，请连接校园网或开启可访问学校的 VPN 后重试。' : e.message, 'NETWORK'); }
+  catch (e) { if (client.cancelled) throw e; throw error(url.includes('stu.slai.edu.cn') ? '考勤连接失败，请确认代理通道在线后重试。' : e.message, 'NETWORK'); }
   if ([401, 403, 901].includes(res.statusCode) || /https:\/\/sts\./.test(res.url) || /loginForm|FormsAuthentication/.test(String(res.data))) {
     invalidate(client);
     throw error('学校登录已过期，请重新登录；本地数据仍保留。', 'SESSION_EXPIRED');
@@ -118,7 +118,7 @@ async function loadMonth(client, month) {
 async function jsonEntry(client) {
   let res;
   try { res = await client.request('https://stu.slai.edu.cn/sso/login'); }
-  catch (_) { throw error('考勤连接失败，请连接校园网或开启可访问学校的 VPN 后重试。', 'NETWORK'); }
+  catch (_) { throw error('考勤连接失败，请确认代理通道在线后重试。', 'NETWORK'); }
   if ([401, 403, 901].includes(res.statusCode) || /https:\/\/sts\./.test(res.url) || /loginForm|FormsAuthentication/.test(String(res.data))) {
     invalidate(client);
     throw error('考勤会话已失效，请重新登录。', 'SESSION_EXPIRED');

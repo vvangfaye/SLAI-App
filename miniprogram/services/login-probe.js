@@ -1,18 +1,35 @@
 // Experimental, in-memory authentication probe. No analytics, logging or storage.
-const HOSTS = ['sis.slai.edu.cn', 'stu.slai.edu.cn', 'sts.slai.edu.cn'];
-function urlParts(url) {
+const ROUTE_HOSTS = { sis: 'sis.slai.edu.cn', sts: 'sts.slai.edu.cn', stu: 'stu.slai.edu.cn' };
+const ROUTES = {};
+Object.keys(ROUTE_HOSTS).forEach(route => { ROUTES[ROUTE_HOSTS[route]] = route; });
+const HOSTS = Object.keys(ROUTES);
+const PROXY_ROOT = 'https://openslai.cn/_slai/';
+function canonicalUrl(input) {
+  const routed = /^https:\/\/openslai\.cn\/_slai\/([a-z]+)(\/[^#]*)?$/i.exec(input);
+  const host = routed && ROUTE_HOSTS[routed[1].toLowerCase()];
+  return host ? `https://${host}${routed[2] || '/'}` : input;
+}
+function urlParts(input) {
+  const url = canonicalUrl(input);
   const m = /^https:\/\/([a-z0-9.-]+)(\/[^#]*)?$/i.exec(url);
   if (!m || !HOSTS.includes(m[1].toLowerCase())) throw new Error('认证跳转超出学校 HTTPS 域名范围');
   return { host: m[1].toLowerCase(), path: (m[2] || '/').split('?')[0], url };
+}
+function transportUrl(url) {
+  const logical = urlParts(url);
+  const suffix = logical.url.slice(`https://${logical.host}`.length) || '/';
+  return `${PROXY_ROOT}${ROUTES[logical.host]}${suffix}`;
+}
+function proxyTransport(transport) {
+  return options => transport({ ...options, url: transportUrl(options.url) });
 }
 function resolve(base, target) {
   let url;
   if (/^https:\/\//i.test(target)) url = target;
   else if (target.startsWith('/') && !target.startsWith('//')) url = `https://${urlParts(base).host}${target}`;
-  else if (target.startsWith('?')) url = base.split('?')[0] + target;
+  else if (target.startsWith('?')) url = urlParts(base).url.split('?')[0] + target;
   else throw new Error('遇到未支持的跳转形式，需要进一步适配');
-  urlParts(url);
-  return url;
+  return urlParts(url).url;
 }
 function header(headers, name) {
   const key = Object.keys(headers || {}).find(k => k.toLowerCase() === name.toLowerCase());
@@ -64,12 +81,12 @@ function wxTransport(options) {
   });
 }
 class LoginProbe {
-  constructor(transport = wxTransport) { this.transport = transport; this.jar = new CookieJar(); this.cancelled = false; }
+  constructor(transport = wxTransport) { this.transport = proxyTransport(transport); this.jar = new CookieJar(); this.cancelled = false; }
   close() { this.cancelled = true; this.jar.clear(); }
   async request(url, method = 'GET', data = '') {
     for (let hop = 0; hop < 12; hop++) {
       if (this.cancelled) throw new Error('验证已结束');
-      urlParts(url);
+      url = urlParts(url).url;
       const res = await this.transport({ url, method, data, header: { Cookie: this.jar.forUrl(url), 'Content-Type': 'application/x-www-form-urlencoded', ...(/\/a\/|xskbcx_|index_cx/.test(url) ? { Accept: 'application/json, text/javascript, */*; q=0.01', 'X-Requested-With': 'XMLHttpRequest' } : {}) } });
       if (this.cancelled) throw new Error('验证已结束');
       const raw = header(res.header, 'set-cookie');
@@ -134,7 +151,7 @@ class LoginProbe {
     let payload;
     try { payload = JSON.parse(attendance.data); } catch (_) { /* report below */ }
     if (attendance.statusCode !== 200 || !payload || ![0, '0'].includes(payload.code) || !Array.isArray(payload.data)) throw new Error('教务已通过；考勤接口尚未返回有效业务数据');
-    progress('验证通过：小程序直接认证后，课表和考勤均返回有效业务数据。未保存账号、密码、Cookie 或业务记录。');
+    progress('验证通过：学校认证后，课表和考勤均返回有效业务数据。未保存账号、密码、Cookie 或业务记录。');
   }
 }
-module.exports = { CookieJar, LoginProbe, resolve, wxTransport };
+module.exports = { CookieJar, LoginProbe, resolve, transportUrl, wxTransport };
