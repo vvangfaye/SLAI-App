@@ -155,7 +155,7 @@ test('微信连接失败保留固定诊断码与数值 errno，不泄露原始�
     ['request:fail SSL handshake failed', 'RELAY_TLS_ERROR'],
     ['request:fail timeout', 'RELAY_TIMEOUT'],
     ['request:fail net::ERR_NAME_NOT_RESOLVED', 'RELAY_DNS_ERROR'],
-    ['request:fail connection closed', 'RELAY_CONNECTION_FAILED'],
+    ['request:fail connection closed', 'RELAY_CONNECTION_RESET'],
     ['', 'RELAY_CONNECTION_FAILED']
   ];
   for (const [message, code] of cases) {
@@ -181,6 +181,15 @@ test('微信连接失败保留固定诊断码与数值 errno，不泄露原始�
     assert.equal(error.message.includes('private-error-detail'), false);
     return true;
   });
+});
+test('连接错误仅保留允许的原生错误标识和错误号，原始内容不会显示或存储', () => {
+  const { connectionError } = require('../miniprogram/services/relay-protocol');
+  const error = connectionError({ errMsg: 'request:fail errcode:-101 cronet_error_code:-101 error_msg:net::ERR_CONNECTION_RESET https://openslai.cn/?Password=private-detail', errno: 600001 });
+  assert.equal(error.code, 'RELAY_CONNECTION_RESET');
+  assert.equal(error.nativeCode, 'ERR_CONNECTION_RESET');
+  assert.equal(error.nativeNumber, -101);
+  assert.equal(error.message.includes('private-detail'), false);
+  assert.equal(JSON.stringify(error).includes('private-detail'), false);
 });
 test('服务端拒绝其他域、危险路径、异常方法与头注入，上游不会收到请求', async t => {
   const calls = [];

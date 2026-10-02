@@ -14,6 +14,7 @@
     <button class="fill-help" bindtap="checkConnection" loading="{{checking}}" disabled="{{busy || checking}}">检查连接（无需密码）</button>
     <button class="fill-help" bindtap="fillHelp" disabled="{{busy || checking}}">填充帮助</button>
   </view>
+  <button class="fill-help" wx:if="{{connectionReport}}" bindtap="copyConnectionReport" disabled="{{busy || checking}}">复制检查结果</button>
   <view class="card muted">{{remember ? '登录凭据加密保存在本机，退出登录时清除。' : '仅本次登录，不保存密码。'}}切换账号将替换本机缓存。</view>
   <view class="muted">同步需要校园代理通道在线。</view>
 </view>

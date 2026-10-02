@@ -18,6 +18,9 @@ function relayError(message, code) {
 }
 function connectionError(details) {
   const text = details && typeof details.errMsg === 'string' ? details.errMsg : '';
+  const nativeCode = ['ERR_CONNECTION_RESET', 'ERR_CONNECTION_CLOSED', 'ERR_CONNECTION_REFUSED', 'ERR_CONNECTION_TIMED_OUT', 'ERR_TIMED_OUT', 'ERR_NAME_NOT_RESOLVED', 'ERR_CERT_AUTHORITY_INVALID', 'ERR_CERT_COMMON_NAME_INVALID', 'ERR_CERT_DATE_INVALID', 'ERR_SSL_PROTOCOL_ERROR', 'ERR_SSL_VERSION_OR_CIPHER_MISMATCH', 'ERR_INTERNET_DISCONNECTED', 'ERR_NETWORK_CHANGED', 'ERR_NETWORK_ACCESS_DENIED', 'ERR_ACCESS_DENIED', 'ERR_FAILED'].find(code => text.toUpperCase().includes(code));
+  const number = /(?:errcode|cronet_error_code)\s*[:=]\s*(-?\d{1,4})\b|request:fail\s+(-?\d{1,4})\b/i.exec(text);
+  const nativeNumber = number ? Number(number[1] || number[2]) : undefined;
   let code = 'RELAY_CONNECTION_FAILED';
   let message = '无法连接登录中转服务，请切换 Wi-Fi 或移动数据后检查连接';
   if (/url not in domain list|not in.*domain|合法域名/i.test(text)) {
@@ -26,17 +29,22 @@ function connectionError(details) {
   } else if (/ssl|tls|certificate|cert_|证书/i.test(text)) {
     code = 'RELAY_TLS_ERROR';
     message = '手机与中转服务的 HTTPS 连接失败，请管理员检查证书与公网连接';
-  } else if (/timeout|timed out|超时/i.test(text)) {
+  } else if (/timeout|timed[ _]out|超时/i.test(text)) {
     code = 'RELAY_TIMEOUT';
     message = '连接登录中转服务超时，请切换网络后重试';
   } else if (/dns|resolve|name_not_resolved|域名解析/i.test(text)) {
     code = 'RELAY_DNS_ERROR';
     message = '当前网络无法解析中转域名，请切换网络后重试';
+  } else if (/connection_(?:reset|closed)|connection (?:reset|closed)/i.test(text)) {
+    code = 'RELAY_CONNECTION_RESET';
+    message = '手机与中转服务的连接被关闭，请切换网络后检查连接';
   }
   // Never echo the native error text: it can contain URLs, tokens or headers.
   const errno = details && Number.isSafeInteger(details.errno) ? details.errno : undefined;
-  const error = relayError(`${message}（${code}${errno === undefined ? '' : `，微信码 ${errno}`}）`, code);
+  const error = relayError(`${message}（${code}${nativeCode ? `，${nativeCode}` : ''}${nativeNumber === undefined ? '' : `，原生码 ${nativeNumber}`}${errno === undefined ? '' : `，微信码 ${errno}`}）`, code);
   if (errno !== undefined) error.errno = errno;
+  if (nativeCode) error.nativeCode = nativeCode;
+  if (nativeNumber !== undefined) error.nativeNumber = nativeNumber;
   return error;
 }
 function decodeResponse(response) {

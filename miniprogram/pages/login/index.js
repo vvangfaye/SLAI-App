@@ -2,8 +2,9 @@ const campus = require('../../services/campus');
 const d = require('../../utils/domain');
 const fillDiagnostics = require('../../utils/fill-diagnostics');
 const { LoginProbe, urlParts } = require('../../services/login-probe');
+const connectionDiagnostics = require('../../utils/connection-diagnostics');
 Page({
-  data: { username: '', password: '', remember: true, month: d.dateKey().slice(0, 7), busy: false, checking: false, status: '' },
+  data: { username: '', password: '', remember: true, month: d.dateKey().slice(0, 7), busy: false, checking: false, status: '', connectionReport: '' },
   onLoad(options) { if (options.month && /^\d{4}-(0[1-9]|1[0-2])$/.test(options.month)) this.setData({ month: options.month }); },
   trackFill(e) {
     if (!fillDiagnostics.available()) return;
@@ -46,22 +47,31 @@ Page({
   async checkConnection() {
     if (this.data.busy || this.data.checking) return;
     const probe = new LoginProbe();
+    const network = connectionDiagnostics.networkType();
+    let failure;
     this.connectionProbe = probe;
-    this.setData({ checking: true, status: '正在检查中转服务与学校登录页，不提交账号密码…' });
+    this.setData({ checking: true, connectionReport: '', status: '正在检查中转服务与学校登录页，不提交账号密码…' });
     try {
       // A fresh anonymous session never reuses the user's login cookies.
       const response = await probe.request('https://sis.slai.edu.cn/yjsxt/htxylogin');
       if (response.statusCode !== 200 || urlParts(response.url).host !== 'sts.slai.edu.cn' || !/id=["']loginForm["']/.test(response.data) || !/FormsAuthentication/.test(response.data)) {
-        throw new Error('已连接中转服务，但学校登录页返回异常，请管理员检查校园通道（RELAY_ENTRY_UNEXPECTED）');
+        const error = new Error('已连接中转服务，但学校登录页返回异常，请管理员检查校园通道（RELAY_ENTRY_UNEXPECTED）');
+        error.code = 'RELAY_ENTRY_UNEXPECTED'; throw error;
       }
       if (!this.gone) this.setData({ status: '连接正常：中转服务与学校登录页均可访问，可以继续登录。' });
     } catch (error) {
+      failure = error;
       if (!this.gone) this.setData({ status: error.message });
     } finally {
       probe.close();
       this.connectionProbe = null;
-      if (!this.gone) this.setData({ checking: false });
+      const report = connectionDiagnostics.report(failure, await network);
+      if (!this.gone) this.setData({ checking: false, connectionReport: report });
     }
+  },
+  copyConnectionReport() {
+    if (!this.data.connectionReport || this.data.checking) return;
+    wx.setClipboardData({ data: this.data.connectionReport, fail: () => wx.showToast({ title: '复制失败，请重试', icon: 'none' }) });
   },
   home() { wx.switchTab({ url: '/pages/home/index' }); },
   fillHelp() {

@@ -160,6 +160,20 @@ test('连接检查期间阻止登录，离开页面后丢弃迟到的连接响�
   await checking;
   assert.equal(p.data.status, status);
 });
+test('连接检查结果可一键复制，只含错误码和系统版本，不包含表单或原始错误', async () => {
+  const p = page('login');
+  p.data.username = 'private-test@example.invalid'; p.data.password = 'private-test-password';
+  wx.getNetworkType = options => options.success({ networkType: '5g' });
+  wx.getDeviceInfo = () => ({ system: 'iOS 26.0.1', private: p.data.username });
+  wx.getAppBaseInfo = () => ({ version: '8.0.63', SDKVersion: '3.17.2', token: 'private-detail' });
+  wx.request = options => options.fail({ errMsg: 'request:fail errcode:-101 net::ERR_CONNECTION_RESET https://openslai.cn/?token=private-detail', errno: 600001 });
+  let copied;
+  wx.setClipboardData = options => { copied = options.data; };
+  await p.checkConnection(); p.copyConnectionReport();
+  assert.equal(copied, p.data.connectionReport);
+  for (const expected of ['ND-2', 'ERR_CONNECTION_RESET', '-101', '600001', 'iOS 26.0.1', '3.17.2', '5g']) assert.ok(copied.includes(expected), expected);
+  for (const secret of [p.data.username, p.data.password, 'private-detail']) assert.equal(copied.includes(secret), false);
+});
 
 test('填充对照在输入期间不重绘，只报告值是否存在，提交后移除输入框', () => {
   wx.getAccountInfoSync = () => ({ miniProgram: { envVersion: 'develop' } });
