@@ -245,3 +245,13 @@ test('云端中转复用本机 FRP，固定学校路由并逐次返回跳转', a
   assert.deepEqual(received, [{ path: '/_slai/sis/start?state=a%252Bb&return=%2F..%2F', cookie: 'sis=this-user', host: 'openslai.cn' }]);
   for (const invalid of ['http://other.invalid:18080', 'http://127.0.0.1:0', 'http://127.0.0.1:70000', 'https://127.0.0.1:18080', 'http://127.0.0.1:18080/path']) assert.throws(() => gatewayRequest(invalid));
 });
+test('微信自动添加的 manual 查询参数不影响中转路由，也不传入学校 URL', async t => {
+  const calls = [];
+  const port = await start(t, { request: school([{ statusCode: 302, header: { location: 'https://sts.slai.edu.cn/adfs/login' } }], calls) });
+  const response = await post(port, payload('https://sis.slai.edu.cn/start?state=a%2Bb'), { path: '/_slai/relay?_wx_redirect=manual' });
+  assert.equal(response.statusCode, 200);
+  assert.equal(JSON.parse(response.data).statusCode, 302);
+  assert.equal(response.header.location, undefined);
+  assert.equal(calls[0].path, '/start?state=a%2Bb');
+  assert.equal(calls.length, 1);
+});

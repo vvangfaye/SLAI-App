@@ -91,7 +91,9 @@ function createRelayServer(options = {}) {
       send(response, 200, { protocol: PROTOCOL, ready: true });
       return;
     }
-    if (incoming.url !== '/_slai/relay') { send(response, 404, { protocol: PROTOCOL, error: { code: 'BAD_REQUEST' } }); return; }
+    // WeChat adds ?_wx_redirect=manual to the transport URL. The relay has no
+    // query parameters; the school URL comes only from the validated JSON.
+    if (incoming.url.split('?')[0] !== '/_slai/relay') { send(response, 404, { protocol: PROTOCOL, error: { code: 'BAD_REQUEST' } }); return; }
     if (incoming.method !== 'POST' || !/^application\/json(?:\s*;|$)/i.test(incoming.headers['content-type'] || '')) {
       send(response, 400, { protocol: PROTOCOL, error: { code: 'BAD_REQUEST' } });
       return;
