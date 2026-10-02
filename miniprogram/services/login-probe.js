@@ -1,11 +1,10 @@
-// Experimental, in-memory authentication probe. No analytics, logging or storage.
+// In-memory school authentication. No analytics, logging or credential storage.
 const { PROTOCOL, RELAY_URL, decodeResponse, connectionError } = require('./relay-protocol');
 const ROUTE_HOSTS = { sis: 'sis.slai.edu.cn', sts: 'sts.slai.edu.cn', stu: 'stu.slai.edu.cn' };
 const ROUTES = {};
 Object.keys(ROUTE_HOSTS).forEach(route => { ROUTES[ROUTE_HOSTS[route]] = route; });
 const HOSTS = Object.keys(ROUTES);
 const PROXY_ORIGIN = 'https://openslai.cn';
-const PROXY_ROOT = `${PROXY_ORIGIN}/_slai/`;
 function validatePath(path) {
   const invalid = () => new Error('认证跳转路径包含不安全的点段或分隔符，已停止请求');
   if (/[\u0000-\u0020\u007f]/.test(path)) throw invalid();
@@ -35,13 +34,10 @@ function urlParts(input) {
   // Keep the query byte-for-byte: SSO state and callback URLs are opaque data.
   return { host, path, url: `https://${host}${path}${m[3] || ''}` };
 }
-function transportUrl(url) {
+// Only the server's local FRP gateway needs the legacy /_slai/{school} path.
+function gatewayPath(url) {
   const logical = urlParts(url);
-  const suffix = logical.url.slice(`https://${logical.host}`.length) || '/';
-  return `${PROXY_ROOT}${ROUTES[logical.host]}${suffix}`;
-}
-function proxyTransport(transport) {
-  return options => transport({ ...options, url: transportUrl(options.url) });
+  return `/_slai/${ROUTES[logical.host]}${logical.url.slice(`https://${logical.host}`.length)}`;
 }
 function resolve(base, target) {
   let url;
@@ -101,7 +97,7 @@ function wxTransport(options) {
   });
 }
 class LoginProbe {
-  constructor(transport = wxTransport) { this.transport = proxyTransport(transport); this.jar = new CookieJar(); this.cancelled = false; }
+  constructor(transport = wxTransport) { this.transport = transport; this.jar = new CookieJar(); this.cancelled = false; }
   close() { this.cancelled = true; this.jar.clear(); }
   async request(url, method = 'GET', data = '') {
     for (let hop = 0; hop < 12; hop++) {
@@ -152,31 +148,5 @@ class LoginProbe {
     }
     if (result.statusCode < 200 || result.statusCode >= 300) throw new Error('认证返回异常，尚未证明会话有效');
   }
-  async verify(username, password, progress) {
-    progress('正在验证教务系统登录…');
-    await this.authenticate('https://sis.slai.edu.cn/yjsxt/htxylogin', username, password);
-    const semesterResponse = await this.request('https://sis.slai.edu.cn/yjsxt/xtgl/index_cxCurrentSemester.html?gnmkdm=index', 'POST');
-    let semester;
-    try { semester = JSON.parse(semesterResponse.data); } catch (_) { throw new Error('教务登录后未取得学期 JSON，会话验证未通过'); }
-    const year = String(semester.year || '').match(/^\d{4}/);
-    const term = { '1': '3', '2': '12', '3': '16' }[String(semester.semester)];
-    if (!year || !term) throw new Error('学期数据结构不符合已知格式');
-    const schedule = await this.request('https://sis.slai.edu.cn/yjsxt/kbcx/xskbcx_cxXsKb.html?gnmkdm=index', 'POST', `localeKey=zh_CN&xnm=${year[0]}&xqm=${term}&zs=`);
-    let courses;
-    try { courses = JSON.parse(schedule.data).kbList; } catch (_) { /* report below */ }
-    if (schedule.statusCode !== 200 || !Array.isArray(courses)) throw new Error('课表接口未返回有效 kbList，会话验证未通过');
-    progress(`教务已通过：返回 ${courses.length} 条课程记录（不保存内容）。正在验证考勤…`);
-    // Reuse the in-memory AD FS session; only submit credentials if redirected to a login form.
-    const student = await this.request('https://stu.slai.edu.cn/sso/login');
-    if (urlParts(student.url).host === 'sts.slai.edu.cn') {
-      // Stop instead of automatically submitting the password a second time.
-      throw new Error('教务已通过；考勤需要独立认证，当前验证停止，不自动再次提交密码');
-    }
-    const attendance = await this.request('https://stu.slai.edu.cn/a/edu/acm/swipe/listData?page=1&limit=1');
-    let payload;
-    try { payload = JSON.parse(attendance.data); } catch (_) { /* report below */ }
-    if (attendance.statusCode !== 200 || !payload || ![0, '0'].includes(payload.code) || !Array.isArray(payload.data)) throw new Error('教务已通过；考勤接口尚未返回有效业务数据');
-    progress('验证通过：学校认证后，课表和考勤均返回有效业务数据。未保存账号、密码、Cookie 或业务记录。');
-  }
 }
-module.exports = { CookieJar, LoginProbe, resolve, transportUrl, wxTransport, urlParts };
+module.exports = { CookieJar, LoginProbe, resolve, gatewayPath, wxTransport, urlParts };

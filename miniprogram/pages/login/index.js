@@ -16,7 +16,6 @@ Page({
     this.trackFill(e);
     const password = e.detail.value;
     if (typeof password !== 'string') return;
-    this.password = password;
     this.setData({ password });
   },
   rememberChange(e) { this.setData({ remember: !!e.detail.value }); },
@@ -29,9 +28,8 @@ Page({
       for (const field of ['username', 'password']) fillDiagnostics.record(this.fillTrace, field, 'submit', values && values[field]);
     }
     const username = String(values && values.username || this.data.username || '').trim();
-    const password = values && values.password || this.password || this.data.password || '';
+    const password = values && values.password || this.data.password || '';
     if (!username || !password) { this.setData({ status: '请填写完整校园登录名和密码' }); return; }
-    this.password = '';
     this.setData({ busy: true, password: '' });
     try {
       const result = await campus.sync({ username, password, remember: this.data.remember, month: this.data.month, progress: status => { if (!this.gone) this.setData({ status }); } });
@@ -86,5 +84,5 @@ Page({
       }
     });
   },
-  onUnload() { this.gone = true; this.password = ''; if (this.connectionProbe) this.connectionProbe.close(); if (this.data.busy) campus.logout().catch(() => wx.showToast({ title: '清除登录失败，请在「我的」重试', icon: 'none' })); }
+  onUnload() { this.gone = true; if (this.connectionProbe) this.connectionProbe.close(); if (this.data.busy) campus.logout().catch(() => wx.showToast({ title: '清除登录失败，请在「我的」重试', icon: 'none' })); }
 });

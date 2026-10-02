@@ -3,10 +3,9 @@
 const http = require('node:http');
 const https = require('node:https');
 const zlib = require('node:zlib');
-const { urlParts, transportUrl } = require('../miniprogram/services/login-probe');
-const { PROTOCOL, MAX_REQUEST_BYTES, MAX_RESPONSE_BYTES } = require('../miniprogram/services/relay-protocol');
+const { urlParts, gatewayPath } = require('../miniprogram/services/login-probe');
+const { PROTOCOL, RESPONSE_HEADERS, MAX_REQUEST_BYTES, MAX_RESPONSE_BYTES } = require('../miniprogram/services/relay-protocol');
 const REQUEST_HEADERS = ['cookie', 'content-type', 'accept', 'x-requested-with'];
-const RESPONSE_HEADERS = ['location', 'set-cookie', 'content-type'];
 function failure(code) { const error = new Error(code); error.code = code; return error; }
 function validateRequest(payload) {
   if (!payload || payload.protocol !== PROTOCOL || !['GET', 'POST'].includes(payload.method) || typeof payload.url !== 'string' || payload.url.length > 16384 || typeof payload.data !== 'string' || (payload.method === 'GET' && payload.data !== '')) throw failure('BAD_REQUEST');
@@ -51,7 +50,7 @@ function gatewayRequest(origin) {
   const match = /^http:\/\/127\.0\.0\.1:(\d{1,5})$/.exec(origin);
   if (!match || Number(match[1]) < 1 || Number(match[1]) > 65535) throw new Error('SLAI_RELAY_GATEWAY must be an HTTP loopback port');
   return (options, callback) => {
-    const path = transportUrl(`https://${options.hostname}${options.path}`).slice('https://openslai.cn'.length);
+    const path = gatewayPath(`https://${options.hostname}${options.path}`);
     return http.request({ hostname: '127.0.0.1', port: Number(match[1]), path, method: options.method,
       headers: { ...options.headers, Host: 'openslai.cn' }, signal: options.signal }, callback);
   };

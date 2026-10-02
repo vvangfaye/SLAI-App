@@ -1,12 +1,12 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
-const { CookieJar, LoginProbe, resolve, transportUrl } = require('../miniprogram/services/login-probe');
-test('三个学校逻辑域映射到单一代理且保留路径与查询串', () => {
-  assert.equal(transportUrl('https://sis.slai.edu.cn/yjsxt/htxylogin?a=1%2B2'), 'https://openslai.cn/_slai/sis/yjsxt/htxylogin?a=1%2B2');
-  assert.equal(transportUrl('https://sts.slai.edu.cn/adfs/'), 'https://openslai.cn/_slai/sts/adfs/');
-  assert.equal(transportUrl('https://stu.slai.edu.cn/'), 'https://openslai.cn/_slai/stu/');
+const { CookieJar, LoginProbe, resolve, gatewayPath } = require('../miniprogram/services/login-probe');
+test('三个学校逻辑域映射到固定 FRP 路由且保留路径与查询串', () => {
+  assert.equal(gatewayPath('https://sis.slai.edu.cn/yjsxt/htxylogin?a=1%2B2'), '/_slai/sis/yjsxt/htxylogin?a=1%2B2');
+  assert.equal(gatewayPath('https://sts.slai.edu.cn/adfs/'), '/_slai/sts/adfs/');
+  assert.equal(gatewayPath('https://stu.slai.edu.cn/'), '/_slai/stu/');
   assert.equal(resolve('https://sis.slai.edu.cn/start', 'https://openslai.cn/_slai/sts/adfs/login?state=a%2Bb'), 'https://sts.slai.edu.cn/adfs/login?state=a%2Bb');
-  assert.throws(() => transportUrl('https://example.com/'));
+  assert.throws(() => gatewayPath('https://example.com/'));
   assert.throws(() => resolve('https://sis.slai.edu.cn/', '//sts.slai.edu.cn/'));
 });
 test('学校及代理 HTTPS 地址接受显式 443 端口，其他端口仍被拒绝', () => {
@@ -15,13 +15,13 @@ test('学校及代理 HTTPS 地址接受显式 443 端口，其他端口仍被�
     const logical = `https://${route}.slai.edu.cn/adfs/login${query}`;
     for (const target of [`https://${route}.slai.edu.cn:443/adfs/login${query}`, `https://openslai.cn:443/_slai/${route}/adfs/login${query}`]) {
       assert.equal(resolve('https://sis.slai.edu.cn/start', target), logical);
-      assert.equal(transportUrl(target), `https://openslai.cn/_slai/${route}/adfs/login${query}`);
+      assert.equal(gatewayPath(target), `/_slai/${route}/adfs/login${query}`);
     }
   }
   for (const authority of ['sts.slai.edu.cn:80', 'sts.slai.edu.cn:444', 'openslai.cn:8443', 'sts.slai.edu.cn:443@other.invalid']) {
-    assert.throws(() => transportUrl(`https://${authority}/adfs/login`));
+    assert.throws(() => gatewayPath(`https://${authority}/adfs/login`));
   }
-  assert.throws(() => transportUrl('https://sts.slai.edu.cn:443/../sis/callback'), /路径/);
+  assert.throws(() => gatewayPath('https://sts.slai.edu.cn:443/../sis/callback'), /路径/);
 });
 test('认证中携带显式 443 的同域回跳保持 Cookie，完成后正常读取教务', async () => {
   const calls = [];
@@ -34,7 +34,7 @@ test('认证中携带显式 443 的同域回跳保持 Cookie，完成后正常�
   ];
   const probe = new LoginProbe(async options => { calls.push(options); return replies.shift(); });
   await probe.authenticate('https://sis.slai.edu.cn/start', 'demo@example.invalid', 'test-only');
-  assert.equal(calls[3].url, 'https://openslai.cn/_slai/sts/adfs/login?client-request-id=test-only');
+  assert.equal(calls[3].url, 'https://sts.slai.edu.cn/adfs/login?client-request-id=test-only');
   assert.equal(calls[3].header.Cookie, 'adfs=test-session');
   assert.equal(calls[3].method, 'GET');
   assert.equal(calls[3].data, '');
@@ -71,14 +71,14 @@ const unsafePaths = [
 test('逻辑 URL 与代理 URL 均拒绝点段及编码分隔符，查询串保持原样', () => {
   for (const path of unsafePaths) {
     for (const root of ['https://sts.slai.edu.cn', 'https://openslai.cn/_slai/sts']) {
-      assert.throws(() => transportUrl(root + path), /路径/, root + path);
+      assert.throws(() => gatewayPath(root + path), /路径/, root + path);
       assert.throws(() => resolve('https://sts.slai.edu.cn/adfs/login', root + path), /路径/, root + path);
     }
     assert.throws(() => resolve('https://sts.slai.edu.cn/adfs/login', path), /路径/, path);
   }
   const path = '/adfs/v1.0/login%20name';
   const query = '?redirect=%2F..%2Fsis%2Fcallback&state=a%252Bb&value=../%2e%5c';
-  assert.equal(transportUrl('https://sts.slai.edu.cn' + path + query), 'https://openslai.cn/_slai/sts' + path + query);
+  assert.equal(gatewayPath('https://sts.slai.edu.cn' + path + query), '/_slai/sts' + path + query);
   assert.equal(resolve('https://sts.slai.edu.cn/adfs/login', query), 'https://sts.slai.edu.cn/adfs/login' + query);
 });
 test('初始请求路径不安全时不会调用传输层', async () => {
@@ -108,13 +108,13 @@ test('代理根相对跳转还原逻辑域，未知代理路由被拒绝', () =>
     const target = `/_slai/${route}/adfs/login?state=a%2Bb&return=%2F..%2F`;
     const logical = resolve('https://sis.slai.edu.cn/start', target);
     assert.equal(logical, `https://${route}.slai.edu.cn/adfs/login?state=a%2Bb&return=%2F..%2F`);
-    assert.equal(transportUrl(logical), 'https://openslai.cn' + target);
-    assert.equal(transportUrl(transportUrl(logical)), transportUrl(logical));
+    assert.equal(gatewayPath(logical), target);
+    assert.equal(gatewayPath('https://openslai.cn' + target), target);
     assert.equal(resolve('https://sis.slai.edu.cn/start', `/_slai/${route}`), `https://${route}.slai.edu.cn/`);
   }
   for (const target of ['/_slai/other/login', '/_slai', '/_slai/', '/_slai/%73ts/login', '/_slai/sts/../sis/login', '/_slai/../sis/login', '/_slai/sts/%2e%2e/sis/login']) {
     assert.throws(() => resolve('https://sis.slai.edu.cn/start', target), undefined, target);
-    assert.throws(() => transportUrl('https://openslai.cn' + target), undefined, target);
+    assert.throws(() => gatewayPath('https://openslai.cn' + target), undefined, target);
   }
 });
 test('代理相对跳转后的 Cookie 按目标学校归属，302 清除 POST 内容', async () => {
@@ -129,9 +129,9 @@ test('代理相对跳转后的 Cookie 按目标学校归属，302 清除 POST �
   probe.jar.receive('https://sts.slai.edu.cn/', ['adfs=test-sts; Path=/']);
   const result = await probe.request('https://sis.slai.edu.cn/start', 'POST', 'Password=test');
   assert.deepEqual(calls.map(call => [call.url, call.method, call.data, call.header.Cookie]), [
-    ['https://openslai.cn/_slai/sis/start', 'POST', 'Password=test', 'sis=test-sis'],
-    ['https://openslai.cn/_slai/sts/adfs/login', 'GET', '', 'adfs=test-sts'],
-    ['https://openslai.cn/_slai/sis/callback', 'GET', '', 'sis=test-sis']
+    ['https://sis.slai.edu.cn/start', 'POST', 'Password=test', 'sis=test-sis'],
+    ['https://sts.slai.edu.cn/adfs/login', 'GET', '', 'adfs=test-sts'],
+    ['https://sis.slai.edu.cn/callback', 'GET', '', 'sis=test-sis']
   ]);
   assert.equal(probe.jar.forUrl('https://sts.slai.edu.cn/'), 'adfs=new-session');
   assert.equal(result.url, 'https://sis.slai.edu.cn/callback');
@@ -160,7 +160,7 @@ test('认证表单支持代理根相对 action，并拒绝越界路径及其他�
     const probe = new LoginProbe(async options => { calls.push(options); return replies.shift(); });
     if (action === actions[0]) {
       await probe.authenticate('https://sis.slai.edu.cn/start', 'demo@example.invalid', 'test-only');
-      assert.equal(calls[2].url, 'https://openslai.cn' + action);
+      assert.equal(calls[2].url, 'https://sts.slai.edu.cn/adfs/login?state=a%2Bb');
       assert.equal(calls[2].method, 'POST');
       assert.match(calls[2].data, /Password=test-only/);
       assert.equal(calls[3].method, 'GET');
@@ -172,19 +172,19 @@ test('认证表单支持代理根相对 action，并拒绝越界路径及其他�
     }
   }
 });
-test('请求仅发送到代理并以学校逻辑地址处理重定向', async () => {
+test('传输层直接接收学校逻辑地址，旧代理绝对跳转仍兼容', async () => {
   const calls = [];
   const replies = [
-    { statusCode: 302, header: { Location: 'https://sts.slai.edu.cn/adfs/login?state=a%2Bb' } },
+    { statusCode: 302, header: { Location: 'https://openslai.cn/_slai/sts/adfs/login?state=a%2Bb' } },
     { statusCode: 302, header: { Location: '/adfs/next?code=1%2F2' } },
     { statusCode: 200, header: {}, data: 'ok' }
   ];
   const probe = new LoginProbe(async options => { calls.push(options); return replies.shift(); });
   const result = await probe.request('https://sis.slai.edu.cn/yjsxt/htxylogin');
   assert.deepEqual(calls.map(call => call.url), [
-    'https://openslai.cn/_slai/sis/yjsxt/htxylogin',
-    'https://openslai.cn/_slai/sts/adfs/login?state=a%2Bb',
-    'https://openslai.cn/_slai/sts/adfs/next?code=1%2F2'
+    'https://sis.slai.edu.cn/yjsxt/htxylogin',
+    'https://sts.slai.edu.cn/adfs/login?state=a%2Bb',
+    'https://sts.slai.edu.cn/adfs/next?code=1%2F2'
   ]);
   assert.equal(result.url, 'https://sts.slai.edu.cn/adfs/next?code=1%2F2');
 });
@@ -239,22 +239,6 @@ test('308 同域代理相对跳转保留 POST，303 随后切换为 GET', async 
   const probe = new LoginProbe(async options => { calls.push(options); return replies.shift(); });
   await probe.request('https://sts.slai.edu.cn/adfs/login', 'POST', 'Password=test');
   assert.deepEqual(calls.map(call => [call.method, call.data]), [['POST', 'Password=test'], ['POST', 'Password=test'], ['GET', '']]);
-  assert.equal(calls[1].url, 'https://openslai.cn/_slai/sts/adfs/next');
-  assert.equal(calls[2].url, 'https://openslai.cn/_slai/sts/adfs/next?done=1');
-});
-test('业务 JSON 形状验证后才报告通过，凭据不会写入日志', async () => {
-  const replies = [
-    { statusCode: 302, header: { Location: 'https://sts.slai.edu.cn/adfs/oauth2/authorize' } },
-    { statusCode: 200, data: '<form id="loginForm" action="/adfs/oauth2/authorize"></form>FormsAuthentication' },
-    { statusCode: 302, header: { Location: 'https://sis.slai.edu.cn/yjsxt/htxylogin' } },
-    { statusCode: 200, data: 'home' },
-    { statusCode: 200, data: '{"year":"2026-2027","semester":"1"}' },
-    { statusCode: 200, data: '{"kbList":[]}' },
-    { statusCode: 200, data: 'home' },
-    { statusCode: 200, data: '{"code":0,"data":[]}' }
-  ];
-  const logs = [];
-  const probe = new LoginProbe(async () => ({ header: {}, ...replies.shift() }));
-  await probe.verify('demo@example.invalid', 'secret-value', m => logs.push(m));
-  assert.match(logs.at(-1), /验证通过/); assert.ok(!logs.join('').includes('secret-value')); assert.equal(replies.length, 0);
+  assert.equal(calls[1].url, 'https://sts.slai.edu.cn/adfs/next');
+  assert.equal(calls[2].url, 'https://sts.slai.edu.cn/adfs/next?done=1');
 });

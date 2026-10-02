@@ -101,7 +101,7 @@ test('日常加载今日打卡，空记录与失败明确区分，隐藏后丢�
     p.passwordInput({ detail: { value: 'test-only' } });
     assert.equal(p.data.password, 'test-only');
     await p.login({ detail: { value: { username: '', password: '' } } });
-    assert.equal(submitted.password, 'test-only'); assert.equal(p.data.password, ''); assert.equal(p.password, '');
+    assert.equal(submitted.password, 'test-only'); assert.equal(p.data.password, '');
     const cleared = page('login'); cleared.userInput({ detail: { value: 'test@example.edu' } });
     cleared.passwordInput({ detail: { value: 'test-only' } });
     cleared.passwordInput({ detail: { value: '' } });

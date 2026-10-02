@@ -2,6 +2,7 @@
 const PROTOCOL = 'slai-relay-v1';
 const RELAY_ORIGIN = 'https://slai-api.wangfaye.cn';
 const RELAY_URL = `${RELAY_ORIGIN}/_slai/relay`;
+const RESPONSE_HEADERS = ['location', 'set-cookie', 'content-type'];
 const MAX_REQUEST_BYTES = 256 * 1024;
 const MAX_RESPONSE_BYTES = 4 * 1024 * 1024;
 const ERROR_MESSAGES = {
@@ -60,11 +61,11 @@ function decodeResponse(response) {
   const h = envelope.header;
   const validHeaders = h && typeof h === 'object' && !Array.isArray(h) && Object.keys(h).every(key => {
     const name = key.toLowerCase();
-    return ['location', 'content-type', 'set-cookie'].includes(name) && (typeof h[key] === 'string' || (name === 'set-cookie' && Array.isArray(h[key]) && h[key].every(line => typeof line === 'string')));
+    return RESPONSE_HEADERS.includes(name) && (typeof h[key] === 'string' || (name === 'set-cookie' && Array.isArray(h[key]) && h[key].every(line => typeof line === 'string')));
   });
   if (response.statusCode !== 200 || !Number.isInteger(envelope.statusCode) || envelope.statusCode < 200 || envelope.statusCode > 599 || !validHeaders || typeof envelope.data !== 'string') {
     throw relayError('登录中转响应格式异常，已停止请求', 'RELAY_PROTOCOL_ERROR');
   }
   return { statusCode: envelope.statusCode, header: h, data: envelope.data };
 }
-module.exports = { PROTOCOL, RELAY_ORIGIN, RELAY_URL, MAX_REQUEST_BYTES, MAX_RESPONSE_BYTES, ERROR_MESSAGES, decodeResponse, connectionError };
+module.exports = { PROTOCOL, RELAY_ORIGIN, RELAY_URL, RESPONSE_HEADERS, MAX_REQUEST_BYTES, MAX_RESPONSE_BYTES, ERROR_MESSAGES, decodeResponse, connectionError };
