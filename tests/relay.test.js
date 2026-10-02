@@ -4,7 +4,7 @@ const http = require('node:http');
 const { EventEmitter } = require('node:events');
 const { Readable } = require('node:stream');
 const zlib = require('node:zlib');
-const { createRelayServer } = require('../server/relay');
+const { createRelayServer, gatewayRequest } = require('../server/relay');
 const { LoginProbe, wxTransport } = require('../miniprogram/services/login-probe');
 const { PROTOCOL, RELAY_URL, MAX_REQUEST_BYTES, MAX_RESPONSE_BYTES } = require('../miniprogram/services/relay-protocol');
 
@@ -225,4 +225,23 @@ test('超大请求在学校请求前被阻止', async t => {
   assert.equal(response.statusCode, 413);
   assert.equal(JSON.parse(response.data).error.code, 'REQUEST_TOO_LARGE');
   assert.equal(calls.length, 0);
+});
+test('云端中转复用本机 FRP，固定学校路由并逐次返回跳转', async t => {
+  const received = [];
+  const gateway = http.createServer((request, response) => {
+    received.push({ path: request.url, cookie: request.headers.cookie, host: request.headers.host });
+    response.writeHead(302, { Location: 'https://sts.slai.edu.cn/adfs/login', 'Set-Cookie': ['sis=fixture; Path=/'] });
+    response.end('');
+  });
+  await new Promise(resolve => gateway.listen(0, '127.0.0.1', resolve));
+  t.after(() => new Promise(resolve => { gateway.close(resolve); gateway.closeAllConnections(); }));
+  const port = await start(t, { request: gatewayRequest(`http://127.0.0.1:${gateway.address().port}`) });
+  const request = payload('https://sis.slai.edu.cn/start?state=a%252Bb&return=%2F..%2F');
+  request.header.Cookie = 'sis=this-user';
+  const response = await post(port, request);
+  assert.equal(response.statusCode, 200);
+  assert.equal(response.header.location, undefined);
+  assert.equal(JSON.parse(response.data).statusCode, 302);
+  assert.deepEqual(received, [{ path: '/_slai/sis/start?state=a%252Bb&return=%2F..%2F', cookie: 'sis=this-user', host: 'openslai.cn' }]);
+  for (const invalid of ['http://other.invalid:18080', 'http://127.0.0.1:0', 'http://127.0.0.1:70000', 'https://127.0.0.1:18080', 'http://127.0.0.1:18080/path']) assert.throws(() => gatewayRequest(invalid));
 });

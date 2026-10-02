@@ -3,7 +3,7 @@
 const http = require('node:http');
 const https = require('node:https');
 const zlib = require('node:zlib');
-const { urlParts } = require('../miniprogram/services/login-probe');
+const { urlParts, transportUrl } = require('../miniprogram/services/login-probe');
 const { PROTOCOL, MAX_REQUEST_BYTES, MAX_RESPONSE_BYTES } = require('../miniprogram/services/relay-protocol');
 const REQUEST_HEADERS = ['cookie', 'content-type', 'accept', 'x-requested-with'];
 const RESPONSE_HEADERS = ['location', 'set-cookie', 'content-type'];
@@ -44,6 +44,17 @@ function errorCode(error) {
   if (['BAD_REQUEST', 'REQUEST_TOO_LARGE', 'RESPONSE_TOO_LARGE', 'UPSTREAM_TIMEOUT'].includes(error.code)) return error.code;
   if (/CERT|TLS|SSL|SELF_SIGNED|UNABLE_TO_VERIFY|UNABLE_TO_GET_ISSUER/.test(error.code || '')) return 'UPSTREAM_TLS_ERROR';
   return 'UPSTREAM_UNAVAILABLE';
+}
+function gatewayRequest(origin) {
+  // This is a server-only setting for the existing local FRP visitor. Clients
+  // cannot choose a gateway or an arbitrary upstream host.
+  const match = /^http:\/\/127\.0\.0\.1:(\d{1,5})$/.exec(origin);
+  if (!match || Number(match[1]) < 1 || Number(match[1]) > 65535) throw new Error('SLAI_RELAY_GATEWAY must be an HTTP loopback port');
+  return (options, callback) => {
+    const path = transportUrl(`https://${options.hostname}${options.path}`).slice('https://openslai.cn'.length);
+    return http.request({ hostname: '127.0.0.1', port: Number(match[1]), path, method: options.method,
+      headers: { ...options.headers, Host: 'openslai.cn' }, signal: options.signal }, callback);
+  };
 }
 function oneHop(target, { request = https.request, timeoutMs = 20000, signal } = {}) {
   return new Promise((resolve, reject) => {
@@ -109,8 +120,9 @@ function createRelayServer(options = {}) {
 if (require.main === module) {
   const port = Number(process.env.SLAI_RELAY_PORT || 8787);
   const host = process.env.SLAI_RELAY_BIND || '127.0.0.1';
-  const server = createRelayServer();
+  const request = process.env.SLAI_RELAY_GATEWAY ? gatewayRequest(process.env.SLAI_RELAY_GATEWAY) : https.request;
+  const server = createRelayServer({ request });
   server.on('error', () => { console.error('SLAI relay could not start. Check bind address and port.'); process.exitCode = 1; });
   server.listen(port, host, () => { console.log('SLAI relay ready.'); });
 }
-module.exports = { createRelayServer, validateRequest };
+module.exports = { createRelayServer, validateRequest, gatewayRequest };

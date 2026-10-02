@@ -8,6 +8,8 @@
 
 新接口必须抵达这个 Node 服务，不能继续转发到原来的学校反向代理；原来的三个路径可保留给旧版。
 
+也可将 Node 服务部署在公网服务器，复用**现有已授权的本机 FRP visitor**：设置 `SLAI_RELAY_GATEWAY=http://127.0.0.1:18080`（端口以实际配置为准）。该设置只接受本机 HTTP 端口，学校目标仍受固定域名与路径校验约束。Node 逐次请求原 `/_slai/{sis|sts|stu}/...` 通道，保持原校园侧网关的 HTTPS/TLS 配置；公网 Nginx 的新接口直接转给本机 Node，无需改 FRP 和校园侧路由。
+
 1. 将更新后的仓库复制或拉取到校园侧主机，在项目目录运行：
 
    ```sh
@@ -47,7 +49,7 @@
 
 服务端每次只请求一个上游，不跟随重定向，保留独立 Set-Cookie 行；响应只携带 Location、Set-Cookie、Content-Type。小程序按学校逻辑域维护内存 Cookie，302/303 后移除 POST 正文，阻止跨域保留 POST 的 307/308。服务端无 Cookie 仓库、账号存储或逐请求日志，不共享不同用户会话。
 
-请求最多 256 KiB，解压后响应最多 4 MiB，上游总超时 20 秒，连接关闭时取消上游请求。TLS 证书校验始终开启；若中转主机不信任学校证书，会返回 `UPSTREAM_TLS_ERROR`。应修复证书链，或在核实后通过 Node 的 `NODE_EXTRA_CA_CERTS` 配置信任的学校 CA，不能关闭校验。不得导出含密码、Cookie 或完整 SSO 地址的调试日志。
+请求最多 256 KiB，解压后响应最多 4 MiB，上游总超时 20 秒，连接关闭时取消上游请求。直连学校的 Node HTTPS 模式始终验证证书；若中转主机不信任学校证书，会返回 `UPSTREAM_TLS_ERROR`。应修复证书链，或在核实后通过 Node 的 `NODE_EXTRA_CA_CERTS` 配置信任的学校 CA，不能关闭校验。FRP 模式复用已有通道与校园网关，不改变其证书配置。不得导出含密码、Cookie 或完整 SSO 地址的调试日志。
 
 单改 Nginx `proxy_redirect` 只会改写响应头中的跳转地址，不能保证小程序收到每一跳及按原学校域隔离 Cookie。相关行为见 [Nginx 官方说明](https://nginx.org/en/docs/http/ngx_http_proxy_module.html#proxy_redirect)；服务端上游使用 [Node HTTPS 请求](https://nodejs.org/api/https.html#httpsrequesturl-options-callback)。
 
