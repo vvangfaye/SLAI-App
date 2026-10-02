@@ -3,14 +3,17 @@
   <view class="subtitle">同步当前学期课表与 {{month}} 考勤</view>
   <view class="card login-card">
   <form bindsubmit="login">
-    <view class="field"><view>校园登录名</view><input name="username" data-field="username" type="text" value="{{username}}" bindfocus="trackFill" bindinput="userInput" bindchange="userInput" bindblur="userInput" disabled="{{busy}}" placeholder="校园邮箱或域账号" maxlength="120"/></view>
-    <view class="field"><view>校园密码</view><input name="password" data-field="password" type="text" password="{{true}}" value="{{password}}" bindfocus="trackFill" bindinput="passwordInput" bindchange="passwordInput" bindblur="passwordInput" disabled="{{busy}}" placeholder="请输入校园密码" maxlength="128"/></view>
-    <view class="row"><text>记住登录</text><switch checked="{{remember}}" disabled="{{busy}}" color="#386552" bindchange="rememberChange"/></view>
-    <view class="actions"><button class="primary" loading="{{busy}}" disabled="{{busy}}" form-type="submit">登录并同步</button></view>
+    <view class="field"><view>校园登录名</view><input name="username" data-field="username" type="text" value="{{username}}" bindfocus="trackFill" bindinput="userInput" bindchange="userInput" bindblur="userInput" disabled="{{busy || checking}}" placeholder="校园邮箱或域账号" maxlength="120"/></view>
+    <view class="field"><view>校园密码</view><input name="password" data-field="password" type="text" password="{{true}}" value="{{password}}" bindfocus="trackFill" bindinput="passwordInput" bindchange="passwordInput" bindblur="passwordInput" disabled="{{busy || checking}}" placeholder="请输入校园密码" maxlength="128"/></view>
+    <view class="row"><text>记住登录</text><switch checked="{{remember}}" disabled="{{busy || checking}}" color="#386552" bindchange="rememberChange"/></view>
+    <view class="actions"><button class="primary" loading="{{busy}}" disabled="{{busy || checking}}" form-type="submit">登录并同步</button></view>
   </form>
   </view>
   <view class="notice" wx:if="{{status}}">{{status}}</view>
-  <button class="fill-help" bindtap="fillHelp" disabled="{{busy}}">填充帮助</button>
+  <view class="login-help">
+    <button class="fill-help" bindtap="checkConnection" loading="{{checking}}" disabled="{{busy || checking}}">检查连接（无需密码）</button>
+    <button class="fill-help" bindtap="fillHelp" disabled="{{busy || checking}}">填充帮助</button>
+  </view>
   <view class="card muted">{{remember ? '登录凭据加密保存在本机，退出登录时清除。' : '仅本次登录，不保存密码。'}}切换账号将替换本机缓存。</view>
   <view class="muted">同步需要校园代理通道在线。</view>
 </view>

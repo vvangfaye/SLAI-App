@@ -149,6 +149,39 @@ test('旧接口及损坏中转响应停止认证，且不回退到原来的跳�
     assert.equal(JSON.parse(calls[0].data).data, '');
   }
 });
+test('微信连接失败保留固定诊断码与数值 errno，不泄露原始错误或继续提交密码', async t => {
+  const cases = [
+    ['request:fail url not in domain list', 'RELAY_DOMAIN_NOT_ALLOWED'],
+    ['request:fail SSL handshake failed', 'RELAY_TLS_ERROR'],
+    ['request:fail timeout', 'RELAY_TIMEOUT'],
+    ['request:fail net::ERR_NAME_NOT_RESOLVED', 'RELAY_DNS_ERROR'],
+    ['request:fail connection closed', 'RELAY_CONNECTION_FAILED'],
+    ['', 'RELAY_CONNECTION_FAILED']
+  ];
+  for (const [message, code] of cases) {
+    const calls = [];
+    useWx(t, options => {
+      calls.push(options);
+      options.fail({ errMsg: `${message} https://openslai.cn/?token=private-error-detail`, errno: 600001, request: 'private-error-detail' });
+    });
+    await assert.rejects(new LoginProbe().authenticate('https://sis.slai.edu.cn/start', 'fixture@example.invalid', 'test-only'), error => {
+      assert.equal(error.code, code);
+      assert.equal(error.errno, 600001);
+      assert.match(error.message, /微信码 600001/);
+      assert.equal(JSON.stringify(error).includes('private-error-detail'), false);
+      assert.equal(error.message.includes('private-error-detail'), false);
+      return true;
+    });
+    assert.equal(calls.length, 1);
+    assert.equal(JSON.parse(calls[0].data).data, '');
+  }
+  useWx(t, options => options.fail({ errMsg: 'private-error-detail', errno: 'private-error-detail' }));
+  await assert.rejects(wxTransport({ url: 'https://sis.slai.edu.cn/start', method: 'GET', header: {}, data: '' }), error => {
+    assert.equal(error.errno, undefined);
+    assert.equal(error.message.includes('private-error-detail'), false);
+    return true;
+  });
+});
 test('服务端拒绝其他域、危险路径、异常方法与头注入，上游不会收到请求', async t => {
   const calls = [];
   const port = await start(t, { request: school([], calls) });

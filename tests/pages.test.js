@@ -120,6 +120,46 @@ test('登录表单接收非聚焦填充事件并同步账号密码', () => {
     assert.equal(p.data[name], value);
   }
 });
+test('登录页连接检查为独立匿名 GET，不发送表单凭据、不保存 Cookie 或退出已有会话', async () => {
+  const campus = require('../miniprogram/services/campus');
+  const originalLogout = campus.logout;
+  const p = page('login');
+  p.data.username = 'private-test@example.invalid'; p.data.password = 'private-test-password';
+  let loggedOut = 0; const calls = [];
+  campus.logout = async () => { loggedOut++; };
+  wx.request = options => {
+    const body = JSON.parse(options.data); calls.push(body);
+    assert.equal(body.method, 'GET'); assert.equal(body.data, '');
+    assert.equal(options.data.includes(p.data.username), false);
+    assert.equal(options.data.includes(p.data.password), false);
+    const result = calls.length === 1
+      ? { statusCode: 302, header: { location: 'https://sts.slai.edu.cn/adfs/login', 'set-cookie': ['anonymous=fixture; Path=/'] }, data: '' }
+      : { statusCode: 200, header: {}, data: '<form id="loginForm"></form>FormsAuthentication' };
+    options.success({ statusCode: 200, data: JSON.stringify({ protocol: 'slai-relay-v1', ...result }) });
+  };
+  try {
+    await p.checkConnection();
+    assert.equal(calls.length, 2);
+    assert.equal(calls[0].header.Cookie, '');
+    assert.match(p.data.status, /连接正常/);
+    assert.equal(p.data.checking, false);
+    assert.equal(p.connectionProbe, null);
+    assert.equal(memory.size, 0);
+    p.onUnload(); assert.equal(loggedOut, 0);
+  } finally { campus.logout = originalLogout; }
+});
+test('连接检查期间阻止登录，离开页面后丢弃迟到的连接响应', async () => {
+  const p = page('login'); let pending;
+  wx.request = options => { pending = options; };
+  const checking = p.checkConnection();
+  const status = p.data.status;
+  await p.login({ detail: { value: {} } });
+  assert.equal(p.data.status, status);
+  p.onUnload();
+  pending.fail({ errMsg: 'request:fail timeout', errno: 600001 });
+  await checking;
+  assert.equal(p.data.status, status);
+});
 
 test('填充对照在输入期间不重绘，只报告值是否存在，提交后移除输入框', () => {
   wx.getAccountInfoSync = () => ({ miniProgram: { envVersion: 'develop' } });

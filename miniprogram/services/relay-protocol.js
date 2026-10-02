@@ -16,6 +16,29 @@ function relayError(message, code) {
   error.code = code;
   return error;
 }
+function connectionError(details) {
+  const text = details && typeof details.errMsg === 'string' ? details.errMsg : '';
+  let code = 'RELAY_CONNECTION_FAILED';
+  let message = '无法连接登录中转服务，请切换 Wi-Fi 或移动数据后检查连接';
+  if (/url not in domain list|not in.*domain|合法域名/i.test(text)) {
+    code = 'RELAY_DOMAIN_NOT_ALLOWED';
+    message = '微信未允许访问中转域名，请确认 request 合法域名包含 https://openslai.cn，并重新扫码最新版';
+  } else if (/ssl|tls|certificate|cert_|证书/i.test(text)) {
+    code = 'RELAY_TLS_ERROR';
+    message = '手机与中转服务的 HTTPS 连接失败，请管理员检查证书与公网连接';
+  } else if (/timeout|timed out|超时/i.test(text)) {
+    code = 'RELAY_TIMEOUT';
+    message = '连接登录中转服务超时，请切换网络后重试';
+  } else if (/dns|resolve|name_not_resolved|域名解析/i.test(text)) {
+    code = 'RELAY_DNS_ERROR';
+    message = '当前网络无法解析中转域名，请切换网络后重试';
+  }
+  // Never echo the native error text: it can contain URLs, tokens or headers.
+  const errno = details && Number.isSafeInteger(details.errno) ? details.errno : undefined;
+  const error = relayError(`${message}（${code}${errno === undefined ? '' : `，微信码 ${errno}`}）`, code);
+  if (errno !== undefined) error.errno = errno;
+  return error;
+}
 function decodeResponse(response) {
   let envelope;
   try { envelope = typeof response.data === 'string' ? JSON.parse(response.data) : response.data; } catch (_) { /* reject below */ }
@@ -35,4 +58,4 @@ function decodeResponse(response) {
   }
   return { statusCode: envelope.statusCode, header: h, data: envelope.data };
 }
-module.exports = { PROTOCOL, RELAY_URL, MAX_REQUEST_BYTES, MAX_RESPONSE_BYTES, ERROR_MESSAGES, decodeResponse };
+module.exports = { PROTOCOL, RELAY_URL, MAX_REQUEST_BYTES, MAX_RESPONSE_BYTES, ERROR_MESSAGES, decodeResponse, connectionError };

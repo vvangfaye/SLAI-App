@@ -1,5 +1,5 @@
 // Experimental, in-memory authentication probe. No analytics, logging or storage.
-const { PROTOCOL, RELAY_URL, decodeResponse } = require('./relay-protocol');
+const { PROTOCOL, RELAY_URL, decodeResponse, connectionError } = require('./relay-protocol');
 const ROUTE_HOSTS = { sis: 'sis.slai.edu.cn', sts: 'sts.slai.edu.cn', stu: 'stu.slai.edu.cn' };
 const ROUTES = {};
 Object.keys(ROUTE_HOSTS).forEach(route => { ROUTES[ROUTE_HOSTS[route]] = route; });
@@ -96,9 +96,7 @@ function wxTransport(options) {
       success: res => {
         try { resolveRequest(decodeResponse(res)); } catch (error) { reject(error); }
       },
-      fail: () => {
-        reject(new Error('无法连接登录中转服务，请检查网络与服务器部署'));
-      }
+      fail: error => reject(connectionError(error))
     });
   });
 }
