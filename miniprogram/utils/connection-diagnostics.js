@@ -17,13 +17,25 @@ function networkType() {
 }
 function report(error, network) {
   let app = {}, device = {};
+  let appId = 'unknown', environment = 'unknown';
   try { if (typeof wx.getAppBaseInfo === 'function') app = wx.getAppBaseInfo() || {}; } catch (_) { /* optional */ }
   try { if (typeof wx.getDeviceInfo === 'function') device = wx.getDeviceInfo() || {}; } catch (_) { /* optional */ }
+  try {
+    if (typeof wx.getAccountInfoSync === 'function') {
+      const account = wx.getAccountInfoSync();
+      const miniProgram = account && account.miniProgram;
+      if (miniProgram && typeof miniProgram === 'object' && !Array.isArray(miniProgram)) {
+        const id = miniProgram.appId, env = miniProgram.envVersion;
+        appId = typeof id === 'string' && id.length === 18 && /^wx[0-9a-fA-F]{16}$/.test(id) ? id : 'unknown';
+        environment = ['develop', 'trial', 'release'].includes(env) ? env : 'unknown';
+      }
+    }
+  } catch (_) { /* optional; never expose account metadata or exception text */ }
   const version = value => typeof value === 'string' && /^\d{1,4}(?:\.\d{1,4}){0,4}$/.test(value) ? value : 'unknown';
   const system = typeof device.system === 'string' && device.system.length <= 80 && /^(?:iOS|Android|Windows|macOS|Mac OS X|HarmonyOS) [\d.]+$/i.test(device.system) ? device.system : 'unknown';
   const code = !error ? 'OK' : /^RELAY_[A-Z_]+$/.test(error.code || '') ? error.code : 'CHECK_FAILED';
   return [
-    '连接检查 ND-2', `中转域名: ${RELAY_ORIGIN.replace(/^https:\/\//, '')}`, `结果: ${code}`,
+    '连接检查 ND-3', `中转域名: ${RELAY_ORIGIN.replace(/^https:\/\//, '')}`, `AppID: ${appId}`, `运行环境: ${environment}`, `结果: ${code}`,
     `微信 errno: ${error && Number.isSafeInteger(error.errno) ? error.errno : 'none'}`,
     `原生错误: ${error && /^ERR_[A-Z_]{1,50}$/.test(error.nativeCode || '') ? error.nativeCode : 'none'}`,
     `原生错误号: ${error && Number.isSafeInteger(error.nativeNumber) ? error.nativeNumber : 'none'}`,
