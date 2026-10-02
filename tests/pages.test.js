@@ -171,7 +171,8 @@ test('连接检查结果可一键复制，只含错误码和系统版本，不�
   wx.setClipboardData = options => { copied = options.data; };
   await p.checkConnection(); p.copyConnectionReport();
   assert.equal(copied, p.data.connectionReport);
-  for (const expected of ['ND-2', 'ERR_CONNECTION_RESET', '-101', '600001', 'iOS 26.0.1', '3.17.2', '5g']) assert.ok(copied.includes(expected), expected);
+  for (const expected of ['ND-2', '中转域名: slai-api.wangfaye.cn', 'ERR_CONNECTION_RESET', '-101', '600001', 'iOS 26.0.1', '3.17.2', '5g']) assert.ok(copied.includes(expected), expected);
+  assert.equal(copied.includes('openslai.cn'), false);
   for (const secret of [p.data.username, p.data.password, 'private-detail']) assert.equal(copied.includes(secret), false);
 });
 

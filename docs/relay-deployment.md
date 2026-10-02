@@ -4,14 +4,26 @@
 
 ## 当前部署（2026-10-02）
 
+客户端外层入口已迁移至 `https://slai-api.wangfaye.cn/_slai/relay`。腾讯云 DNSPod 的 A 记录、有效证书及阿里云 Nginx 配置均已部署；16:27 本机严格校验证书的 TLS 1.2、TLS 1.3/X25519、默认 TLS 1.3 及普通 DNS 匿名请求均取得学校登录页。新域名相关 45 项回归通过（改名前完整 92 项通过）。微信后台需加入新 request 合法域名，手机移动网络验收仍待完成。旧 `openslai.cn` 公网握手在部分客户端重置，详见[验证记录](login-verification.md)。
+
 已在 `aliyun1` 部署发布版本 `edaab9f`，服务为 `slai-relay.service`，以 `faye` 运行并开机启动。使用经官方 SHA256 校验的 Node.js 22.23.3，监听 `127.0.0.1:8787`，通过现有 `http://127.0.0.1:18080` FRP visitor 请求校园侧网关。新 Nginx location 关闭访问日志、缓冲、缓存和请求自动重试。
 
 - 当前发布链接：`/home/faye/slai-relay/current`；保留旧版本用于恢复。
-- Nginx 入口：`/etc/nginx/conf.d/openslai.conf`；新配置片段：`/etc/nginx/snippets/slai-relay.conf`。
-- 本次配置备份：`/etc/nginx/slai-relay-backup-20261002T145235`。
+- 新 Nginx 入口：`/etc/nginx/conf.d/slai-api.conf`；旧 `openslai.conf` 保留；两者复用 `/etc/nginx/snippets/slai-relay.conf`。
+- 新域名部署备份：`/etc/nginx/slai-api-backup-20261002T082515Z`；原中转配置备份：`/etc/nginx/slai-relay-backup-20261002T145235`。
+- 新域名证书：腾讯云免费证书，2026-12-31 14:59:59（北京时间）到期，需在到期前续期并重新安装；当前没有自动续期。证书和私钥只部署在服务器 `/etc/nginx/ssl/`，不进入仓库。
 - 检查服务：`systemctl status slai-relay.service`；重启：`sudo systemctl restart slai-relay.service`。
 
-公网无密码入口检查与微信模拟器真实登录、课表、当月考勤及今日打卡读取已通过。87 项测试在本机和服务器通过；新版手机验收待完成。修改 Nginx 后先校验配置，重载后等待新工作进程接管再检查公网响应。
+旧入口曾在本机通过公网无密码检查与微信模拟器真实登录、课表、当月考勤及今日打卡读取；手机移动网络随后复现连接重置。部署时 87 项测试在本机和服务器通过，当前客户端 92 项回归通过。修改 Nginx 后先校验配置，重载后等待新工作进程接管再检查公网响应。
+
+## slai-api.wangfaye.cn 入口配置
+
+1. 在腾讯云 DNSPod 的 `wangfaye.cn` 下新增 `slai-api` 的 A 记录，默认线路指向 `47.97.220.68`，TTL 600 秒。域名仍由腾讯云解析，中转服务仍运行在阿里云。
+2. 安装覆盖 `slai-api.wangfaye.cn` 的有效 HTTPS 证书及完整中间证书链。现有 `wangfaye.cn` / `www.wangfaye.cn` 证书不覆盖此子域，不能直接复用。
+3. 安装 [server/nginx-api.conf](../server/nginx-api.conf) 中的独立虚拟主机配置，证书路径应与实际安装一致。复用 `/etc/nginx/snippets/slai-relay.conf`，转发到现有 `127.0.0.1:8787`；先备份、执行 `nginx -t`，校验成功后才重载。80 端口返回 404，不承载登录。
+4. 微信小程序后台的 request 合法域名增加 `https://slai-api.wangfaye.cn`，不带路径。保留 HTTPS 与合法域名校验，重新编译、生成预览后先用手机移动网络执行“检查连接（无需密码）”。报告里的中转域名应为 `slai-api.wangfaye.cn`，通过后再测试真实登录与同步。
+
+这里只更换客户端外层 HTTPS 入口。`login-probe.js` 中 `openslai.cn` 的路径映射、校园网关接收的 Host 及旧跳转兼容仍属于内部通道配置，不能全局替换。学校上游白名单与 Cookie 归属仍只包含原学校域名，不添加 `slai-api.wangfaye.cn`。
 
 ## 部署位置
 
@@ -31,7 +43,7 @@
 
 2. 在校园侧 Nginx 对应的 `server` 块内加入 [server/nginx-relay.conf](../server/nginx-relay.conf)。示例与 Node 服务位于同一主机；不同主机应使用受保护的私有通道。
 
-3. 公网 `openslai.cn` 的 HTTPS `server` 块也增加相同的 `location = /_slai/relay`，将其中 `proxy_pass` 改成**你现有 FRP 通往校园侧 Nginx 的地址**。保留路径 `/_slai/relay`，不要加尾部斜杠，不要重写到 SIS/STS/STU。两层都要保留示例中的禁用日志、缓冲、缓存、自动重试设置。校验配置后再重载：
+3. 公网 `slai-api.wangfaye.cn` 的 HTTPS `server` 块增加相同的 `location = /_slai/relay`。当前 `aliyun1` 上 Node 与公网 Nginx 位于同一主机，`proxy_pass` 保持 `http://127.0.0.1:8787`；只有 Node 位于校园侧的拓扑才将其改为现有 FRP 通往 Node 入口的地址。保留路径 `/_slai/relay`，不要加尾部斜杠，不要重写到 SIS/STS/STU。保留示例中的禁用日志、缓冲、缓存、自动重试设置。校验配置后再重载：
 
    ```sh
    nginx -t
@@ -44,7 +56,7 @@
 
    ```sh
    curl --max-time 25 -sS \
-     https://openslai.cn/_slai/relay \
+     https://slai-api.wangfaye.cn/_slai/relay \
      -H 'Content-Type: application/json' \
      --data '{"protocol":"slai-relay-v1","url":"https://sis.slai.edu.cn/yjsxt/htxylogin","method":"GET","header":{},"data":""}' \
      | node -e 'let s="";process.stdin.on("data",x=>s+=x).on("end",()=>{const r=JSON.parse(s);console.log({protocol:r.protocol,statusCode:r.statusCode,hasLocation:!!(r.header&&r.header.location),error:r.error&&r.error.code})})'
@@ -52,11 +64,11 @@
 
    外层必须为 HTTP 200，不能带 HTTP `Location` 或 `Set-Cookie`；JSON 中应有协议标记和学校的 302/跳转地址。上面的命令只打印状态与跳转是否存在，不打印 SSO 参数或 Cookie。
 
-6. 重新编译小程序，先测试登录入口，再用本人账号验证课表和考勤。真机保持合法域名和 HTTPS 校验开启，request 合法域名仍只需 `https://openslai.cn`。更新客户端必须与新接口部署配套；旧网关返回 404/HTML 时会显示“代理登录接口尚未部署或版本不匹配”。
+6. 重新编译小程序，先测试登录入口，再用本人账号验证课表和考勤。真机保持合法域名和 HTTPS 校验开启，request 合法域名包含 `https://slai-api.wangfaye.cn`。更新客户端必须与新接口部署配套；旧网关返回 404/HTML 时会显示“代理登录接口尚未部署或版本不匹配”。
 
 ## 协议与会话
 
-客户端只向 `https://openslai.cn/_slai/relay` 发送 POST JSON，学校目标 URL、原始 GET/POST、Cookie 和表单正文放在 JSON 中。服务端只允许三个学校 HTTPS 域名和标准 443 端口，复用路径校验，拒绝点段与编码分隔符。学校查询串保持原样。
+客户端只向 `https://slai-api.wangfaye.cn/_slai/relay` 发送 POST JSON，学校目标 URL、原始 GET/POST、Cookie 和表单正文放在 JSON 中。服务端只允许三个学校 HTTPS 域名和标准 443 端口，复用路径校验，拒绝点段与编码分隔符。学校查询串保持原样。
 
 微信工具会自动给传输 URL 添加 `?_wx_redirect=manual`。服务端按原始路径匹配入口，忽略外层查询参数；学校 URL 只取自校验后的 JSON，外层参数不会混入学校的查询串。
 

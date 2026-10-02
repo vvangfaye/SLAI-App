@@ -1,6 +1,7 @@
 // School redirects and cookies travel inside JSON, never as HTTP redirects.
 const PROTOCOL = 'slai-relay-v1';
-const RELAY_URL = 'https://openslai.cn/_slai/relay';
+const RELAY_ORIGIN = 'https://slai-api.wangfaye.cn';
+const RELAY_URL = `${RELAY_ORIGIN}/_slai/relay`;
 const MAX_REQUEST_BYTES = 256 * 1024;
 const MAX_RESPONSE_BYTES = 4 * 1024 * 1024;
 const ERROR_MESSAGES = {
@@ -25,7 +26,7 @@ function connectionError(details) {
   let message = '无法连接登录中转服务，请切换 Wi-Fi 或移动数据后检查连接';
   if (/url not in domain list|not in.*domain|合法域名/i.test(text)) {
     code = 'RELAY_DOMAIN_NOT_ALLOWED';
-    message = '微信未允许访问中转域名，请确认 request 合法域名包含 https://openslai.cn，并重新扫码最新版';
+    message = `微信未允许访问中转域名，请确认 request 合法域名包含 ${RELAY_ORIGIN}，并重新扫码最新版`;
   } else if (/ssl|tls|certificate|cert_|证书/i.test(text)) {
     code = 'RELAY_TLS_ERROR';
     message = '手机与中转服务的 HTTPS 连接失败，请管理员检查证书与公网连接';
@@ -66,4 +67,4 @@ function decodeResponse(response) {
   }
   return { statusCode: envelope.statusCode, header: h, data: envelope.data };
 }
-module.exports = { PROTOCOL, RELAY_URL, MAX_REQUEST_BYTES, MAX_RESPONSE_BYTES, ERROR_MESSAGES, decodeResponse, connectionError };
+module.exports = { PROTOCOL, RELAY_ORIGIN, RELAY_URL, MAX_REQUEST_BYTES, MAX_RESPONSE_BYTES, ERROR_MESSAGES, decodeResponse, connectionError };

@@ -6,7 +6,7 @@ const { Readable } = require('node:stream');
 const zlib = require('node:zlib');
 const { createRelayServer, gatewayRequest } = require('../server/relay');
 const { LoginProbe, wxTransport } = require('../miniprogram/services/login-probe');
-const { PROTOCOL, RELAY_URL, MAX_REQUEST_BYTES, MAX_RESPONSE_BYTES } = require('../miniprogram/services/relay-protocol');
+const { PROTOCOL, RELAY_ORIGIN, RELAY_URL, MAX_REQUEST_BYTES, MAX_RESPONSE_BYTES } = require('../miniprogram/services/relay-protocol');
 
 function school(replies, calls = []) {
   return (options, callback) => {
@@ -95,7 +95,7 @@ test('小程序默认传输通过实际 HTTP 中转完成多次登录跳转，�
   ], calls) });
   useWx(t, options => {
     nativeCalls.push(options);
-    assert.equal(options.url, RELAY_URL);
+    assert.equal(options.url, 'https://slai-api.wangfaye.cn/_slai/relay');
     assert.equal(options.method, 'POST');
     assert.equal(options.header.Cookie, undefined);
     // A native client that follows HTTP redirects never sees one here.
@@ -110,6 +110,11 @@ test('小程序默认传输通过实际 HTTP 中转完成多次登录跳转，�
   const probe = new LoginProbe();
   await probe.authenticate('https://sis.slai.edu.cn/start', 'fixture@example.invalid', 'test-only');
   assert.equal(nativeCalls.length, 5);
+  assert.deepEqual(nativeCalls.map(call => JSON.parse(call.data).url), [
+    'https://sis.slai.edu.cn/start', 'https://sts.slai.edu.cn/adfs/login',
+    'https://sts.slai.edu.cn/adfs/login', 'https://sts.slai.edu.cn/adfs/next',
+    'https://sis.slai.edu.cn/callback?code=fixture'
+  ]);
   assert.deepEqual(calls.map(call => [call.hostname, call.method, call.headers.cookie]), [
     ['sis.slai.edu.cn', 'GET', ''], ['sts.slai.edu.cn', 'GET', ''],
     ['sts.slai.edu.cn', 'POST', 'adfs=fixture-sts'], ['sts.slai.edu.cn', 'GET', 'adfs=new-fixture'],
@@ -170,6 +175,12 @@ test('微信连接失败保留固定诊断码与数值 errno，不泄露原始�
       assert.match(error.message, /微信码 600001/);
       assert.equal(JSON.stringify(error).includes('private-error-detail'), false);
       assert.equal(error.message.includes('private-error-detail'), false);
+      if (code === 'RELAY_DOMAIN_NOT_ALLOWED') {
+        assert.equal(RELAY_ORIGIN, 'https://slai-api.wangfaye.cn');
+        assert.equal(RELAY_URL, `${RELAY_ORIGIN}/_slai/relay`);
+        assert.ok(error.message.includes(RELAY_ORIGIN));
+        assert.equal(error.message.includes('openslai.cn'), false);
+      }
       return true;
     });
     assert.equal(calls.length, 1);
@@ -195,7 +206,8 @@ test('服务端拒绝其他域、危险路径、异常方法与头注入，上�
   const calls = [];
   const port = await start(t, { request: school([], calls) });
   const invalid = [
-    payload('https://other.invalid/'), payload('http://sts.slai.edu.cn/'), payload('https://sts.slai.edu.cn:444/'),
+    payload('https://other.invalid/'), payload('https://slai-api.wangfaye.cn/_slai/relay'),
+    payload('http://sts.slai.edu.cn/'), payload('https://sts.slai.edu.cn:444/'),
     ...['/../sis/callback', '/%2e%2e/sis/callback', '/%252e%252e/sis/callback', '/a%2fb', '/a%255cb'].map(path => payload('https://sts.slai.edu.cn' + path)),
     { ...payload(), method: 'DELETE' }, { ...payload(), protocol: 'unknown' },
     { ...payload(), data: 'body-in-get' }, { ...payload(), header: { Cookie: 'x=y\r\nHost: other.invalid' } },
