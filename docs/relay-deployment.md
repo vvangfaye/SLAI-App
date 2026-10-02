@@ -4,7 +4,7 @@
 
 ## 当前部署（2026-10-02）
 
-客户端外层入口已迁移至 `https://slai-api.wangfaye.cn/_slai/relay`。腾讯云 DNSPod 的 A 记录、有效证书及阿里云 Nginx 配置均已部署；16:27 本机严格校验证书的 TLS 1.2、TLS 1.3/X25519、默认 TLS 1.3 及普通 DNS 匿名请求均取得学校登录页。新域名相关 45 项回归通过（改名前完整 92 项通过）。微信后台需加入新 request 合法域名，手机移动网络验收仍待完成。旧 `openslai.cn` 公网握手在部分客户端重置，详见[验证记录](login-verification.md)。
+客户端外层入口已迁移至 `https://slai-api.wangfaye.cn/_slai/relay`。腾讯云 DNSPod 的 A 记录、有效证书及阿里云 Nginx 配置均已部署；16:27 本机严格校验证书的 TLS 1.2、TLS 1.3/X25519、默认 TLS 1.3 及普通 DNS 匿名请求均取得学校登录页。新域名相关 45 项回归通过（改名前完整 92 项通过）。微信后台已加入新 request 合法域名，16:34 开发工具刷新域名并重新编译后，开启域名与 HTTPS 校验的匿名连接检查通过；手机移动网络验收仍待完成。旧 `openslai.cn` 公网握手在部分客户端重置，详见[验证记录](login-verification.md)。
 
 已在 `aliyun1` 部署发布版本 `edaab9f`，服务为 `slai-relay.service`，以 `faye` 运行并开机启动。使用经官方 SHA256 校验的 Node.js 22.23.3，监听 `127.0.0.1:8787`，通过现有 `http://127.0.0.1:18080` FRP visitor 请求校园侧网关。新 Nginx location 关闭访问日志、缓冲、缓存和请求自动重试。
 
