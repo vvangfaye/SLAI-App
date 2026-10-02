@@ -1,4 +1,5 @@
 // Experimental, in-memory authentication probe. No analytics, logging or storage.
+const { PROTOCOL, RELAY_URL, decodeResponse } = require('./relay-protocol');
 const ROUTE_HOSTS = { sis: 'sis.slai.edu.cn', sts: 'sts.slai.edu.cn', stu: 'stu.slai.edu.cn' };
 const ROUTES = {};
 Object.keys(ROUTE_HOSTS).forEach(route => { ROUTES[ROUTE_HOSTS[route]] = route; });
@@ -86,18 +87,19 @@ class CookieJar {
   }
 }
 function wxTransport(options) {
+  const logical = urlParts(options.url).url;
   return new Promise((resolveRequest, reject) => {
-    let received;
-    const task = wx.request({ ...options, dataType: 'text', responseType: 'text', redirect: 'manual', timeout: 20000,
-      success: res => resolveRequest({ ...received, ...res, header: { ...(received && received.header), ...res.header } }),
+    wx.request({ url: RELAY_URL, method: 'POST',
+      header: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      data: JSON.stringify({ protocol: PROTOCOL, url: logical, method: options.method, header: options.header, data: options.data }),
+      dataType: 'text', responseType: 'text', redirect: 'manual', timeout: 25000,
+      success: res => {
+        try { resolveRequest(decodeResponse(res)); } catch (error) { reject(error); }
+      },
       fail: () => {
-        // With redirect: manual some clients end the request after headers.
-        if (received && received.statusCode >= 300 && received.statusCode < 400 && header(received.header, 'location')) resolveRequest({ statusCode: received.statusCode, header: received.header, cookies: received.cookies || [], data: '' });
-        else if (received && header(received.header, 'location')) reject(new Error('当前客户端未提供重定向状态码，请使用微信真机验证'));
-        else reject(new Error('请求未完成：请检查网络、合法域名与 HTTPS 配置'));
+        reject(new Error('无法连接登录中转服务，请检查网络与服务器部署'));
       }
     });
-    task.onHeadersReceived(r => { received = r; });
   });
 }
 class LoginProbe {
@@ -179,4 +181,4 @@ class LoginProbe {
     progress('验证通过：学校认证后，课表和考勤均返回有效业务数据。未保存账号、密码、Cookie 或业务记录。');
   }
 }
-module.exports = { CookieJar, LoginProbe, resolve, transportUrl, wxTransport };
+module.exports = { CookieJar, LoginProbe, resolve, transportUrl, wxTransport, urlParts };
