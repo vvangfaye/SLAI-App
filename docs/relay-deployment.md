@@ -2,6 +2,17 @@
 
 2026-10-02 微信模拟器实测会在客户端收到响应前自动跟随学校的 302，直接访问 STS 后报 `ERR_CERT_AUTHORITY_INVALID`。本地 Node 登录曾成功，是因为它能逐次处理跳转。新接口将学校响应封装为 HTTP 200 JSON，小程序自行处理其中的状态码、Location 和 Set-Cookie；不依赖模拟器是否遵守 `redirect: manual`。
 
+## 当前部署（2026-10-02）
+
+已在 `aliyun1` 部署发布版本 `edaab9f`，服务为 `slai-relay.service`，以 `faye` 运行并开机启动。使用经官方 SHA256 校验的 Node.js 22.23.3，监听 `127.0.0.1:8787`，通过现有 `http://127.0.0.1:18080` FRP visitor 请求校园侧网关。新 Nginx location 关闭访问日志、缓冲、缓存和请求自动重试。
+
+- 当前发布链接：`/home/faye/slai-relay/current`；保留旧版本用于恢复。
+- Nginx 入口：`/etc/nginx/conf.d/openslai.conf`；新配置片段：`/etc/nginx/snippets/slai-relay.conf`。
+- 本次配置备份：`/etc/nginx/slai-relay-backup-20261002T145235`。
+- 检查服务：`systemctl status slai-relay.service`；重启：`sudo systemctl restart slai-relay.service`。
+
+公网无密码入口检查与微信模拟器真实登录、课表、当月考勤及今日打卡读取已通过。87 项测试在本机和服务器通过；新版手机验收待完成。修改 Nginx 后先校验配置，重载后等待新工作进程接管再检查公网响应。
+
 ## 部署位置
 
 在**能解析并访问 SIS、STS、STU 的校园网/VPN 主机**运行 [server/relay.js](../server/relay.js)，需要 Node.js 22 或更新版本，无第三方依赖。默认只监听本机 `127.0.0.1:8787`，复用现有「公网 Nginx → FRP → 局域网网关」链路。
@@ -47,6 +58,8 @@
 
 客户端只向 `https://openslai.cn/_slai/relay` 发送 POST JSON，学校目标 URL、原始 GET/POST、Cookie 和表单正文放在 JSON 中。服务端只允许三个学校 HTTPS 域名和标准 443 端口，复用路径校验，拒绝点段与编码分隔符。学校查询串保持原样。
 
+微信工具会自动给传输 URL 添加 `?_wx_redirect=manual`。服务端按原始路径匹配入口，忽略外层查询参数；学校 URL 只取自校验后的 JSON，外层参数不会混入学校的查询串。
+
 服务端每次只请求一个上游，不跟随重定向，保留独立 Set-Cookie 行；响应只携带 Location、Set-Cookie、Content-Type。小程序按学校逻辑域维护内存 Cookie，302/303 后移除 POST 正文，阻止跨域保留 POST 的 307/308。服务端无 Cookie 仓库、账号存储或逐请求日志，不共享不同用户会话。
 
 请求最多 256 KiB，解压后响应最多 4 MiB，上游总超时 20 秒，连接关闭时取消上游请求。直连学校的 Node HTTPS 模式始终验证证书；若中转主机不信任学校证书，会返回 `UPSTREAM_TLS_ERROR`。应修复证书链，或在核实后通过 Node 的 `NODE_EXTRA_CA_CERTS` 配置信任的学校 CA，不能关闭校验。FRP 模式复用已有通道与校园网关，不改变其证书配置。不得导出含密码、Cookie 或完整 SSO 地址的调试日志。
@@ -55,4 +68,4 @@
 
 ## 验证边界
 
-本地回归测试覆盖实际 HTTP 中转响应、小程序默认传输、登录多次跳转、Cookie 隔离、跨域 POST 拦截、路径拒绝和错误分类。学校上游在这些测试中使用虚构响应；只有部署后在微信模拟器和手机读到真实业务数据，才能确认本次修复可用。
+本地回归测试覆盖实际 HTTP 中转响应、小程序默认传输、登录多次跳转、Cookie 隔离、跨域 POST 拦截、路径拒绝和错误分类。学校上游在这些测试中使用虚构响应；另已完成微信模拟器真实业务验证。单次成功不代表所有手机平台和会话续期场景均通过，新版手机验收仍待完成。

@@ -16,14 +16,14 @@
 
 1. 使用微信开发者工具导入项目，无需安装依赖或构建。
 2. 将 `project.config.json` 中的 AppID 替换为自己的，并在小程序后台将 `https://openslai.cn` 配置为 request 合法域名。
-3. 选择「普通编译」。首次打开可浏览演示数据；完成[登录中转部署](docs/relay-deployment.md)后，可登录学校账号同步真实数据。
+3. 选择「普通编译」。首次打开可浏览演示数据；代理通道在线时，可登录学校账号同步真实数据。
 
 运行本地测试：`npm test`（需 Node.js）。
 
 ## 说明
 
-今日时长按学院多次进出记录累计，忽略宿舍，在校时持续估算；历史考勤与达标状态以学校汇总为准。年假账本为个人记录，不同步学校余额。早期直连登录已通过真机验证；新版中转接口待服务器部署和微信验收，尚未发布正式版。
+今日时长按学院多次进出记录累计，忽略宿舍，在校时持续估算；历史考勤与达标状态以学校汇总为准。年假账本为个人记录，不同步学校余额。新版中转已部署，微信模拟器真实登录、课表与考勤同步通过；新版手机验收仍待完成，尚未发布正式版。
 
-更多细节：[今日时长](docs/live-attendance.md) · [接入设计](docs/integration.md) · [验证记录](docs/login-verification.md) · [日历与年假](docs/calendar-and-leave.md)
+更多细节：[今日时长](docs/live-attendance.md) · [接入设计](docs/integration.md) · [中转部署](docs/relay-deployment.md) · [验证记录](docs/login-verification.md) · [日历与年假](docs/calendar-and-leave.md)
 
 学校接口适配参考 [wangjt23/SLAIer-APP](https://github.com/wangjt23/SLAIer-APP)。本项目采用 [MIT 许可证](LICENSE)。
